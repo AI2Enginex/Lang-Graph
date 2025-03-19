@@ -15,27 +15,27 @@ By employing these methods, the system ensures flexibility and effectiveness in 
 ## 1. Text Preparation
   ***The process begins with the PrepareText class, responsible for reading and preprocessing the document**:
    
-     Reading: Loads the document content.
-      
-     Cleaning: Removes unnecessary characters, extra spaces, and converts text to lowercase.
-      
-     Chunking: Splits the text into manageable chunks based on the specified delimiter, chunk size, and overlap.
-      
-     Vectorization: Transforms text chunks into vector representations using the specified embedding model.
-
-     class PrepareText:
-       """
-       Prepares and processes text from files.
-       Handles reading, cleaning, chunking, and vectorization of text.
-       """
+        Reading: Loads the document content.
+         
+        Cleaning: Removes unnecessary characters, extra spaces, and converts text to lowercase.
+         
+        Chunking: Splits the text into manageable chunks based on the specified delimiter, chunk size, and overlap.
+         
+        Vectorization: Transforms text chunks into vector representations using the specified embedding model.
    
-       def __init__(self, dir_name):
-           """
-           Constructor to read text from a file (PDF).
-   
-           Args:
-               dir_name (str): Path to the directory/file containing the document.
-           """
+        class PrepareText:
+          """
+          Prepares and processes text from files.
+          Handles reading, cleaning, chunking, and vectorization of text.
+          """
+      
+          def __init__(self, dir_name):
+              """
+              Constructor to read text from a file (PDF).
+      
+              Args:
+                  dir_name (str): Path to the directory/file containing the document.
+              """
    
   ***This preparation ensures the text is in an optimal state for summarization***.
 
