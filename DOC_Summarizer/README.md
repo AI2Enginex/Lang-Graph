@@ -10,7 +10,7 @@ The Lang-Graph Document Summarization Project is designed to process and summari
 2. Map-Reduce Summarization: Breaks the document into chunks, summarizes each chunk, and then combines these summaries into a cohesive final summary.
 By employing these methods, the system ensures flexibility and effectiveness in handling documents of varying lengths and complexities.
 
-## Detailed Workflow
+#Detailed Workflow
 
 ## 1. Text Preparation
     The process begins with the PrepareText class, responsible for reading and preprocessing the document:
