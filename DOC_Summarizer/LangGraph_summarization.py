@@ -12,7 +12,7 @@ import os
 import cleantext
 import time
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "xxx-xxxxxxx"
+api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyC4IsEuWU6xO3Ps81ZrYDQF4afLOrVDRb8"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -279,16 +279,37 @@ class PromptTemplates:
     """
     Contains different prompt templates for summarization tasks.
     """
-
     @classmethod
     def summarisation_chains(cls):
-        """
-        Direct summarization prompt template for summarizing small documents into 15 points.
-        """
+        """Direct summarization prompt for smaller documents."""
         try:
             prompt_template = """
             You are given a PDF document.
             Your job is to generate a concise summary of the given document in 15 points.
+            Try to cover each point from starting till the end.
+            Try to summarize each line in the document.
+
+            Context:
+            {context}
+
+            Answer:
+            """
+            return PromptTemplate(template=prompt_template.strip(), input_variables=["context"])
+        except Exception as e:
+            return e
+        
+    @classmethod
+    def summarisation_prompt(cls):
+        """
+        Direct summarization prompt template for summarizing small documents with Strict Constraints.
+        """
+        try:
+            prompt_template = """
+            You are given a PDF document .
+            Your job is to generate a concise summary of the given document in not more than 200 words.
+            Try to give a brief summary by explaining each and every point from the satarting till the end.
+            Display the summary as if you are giving a presentation.
+
             Try to summarize each line in the document.
 
             Context:
@@ -308,7 +329,7 @@ class PromptTemplates:
         try:
             map_template = """
             You are given a part (chunk) of a PDF document.
-            Summarize the key points of this chunk.
+            Summarize the key points of this chunk, try to summarize each point in brief.
             Avoid adding information not present in the chunk.
 
             Document Chunk:
@@ -462,7 +483,7 @@ class StuffSummarizer(PrepareText,ChatGoogleGENAI):
         """Summarize extracted chunks using LLM."""
         try:
             content = "\n\n".join([chunk.page_content for chunk in state["document_chunks"]])
-            prompt_template = PromptTemplates.summarisation_chains()
+            prompt_template = PromptTemplates.summarisation_prompt()
             prompt = prompt_template.format(context=content)
             response = self.llm.invoke(prompt)   # returns a BaseMessage
             summary = response.content # Extracting the message
