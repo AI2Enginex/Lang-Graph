@@ -132,6 +132,5 @@ This project implements a Document Question Answering (QA) system using LangGrap
             Graph structure:
             - Node 1: Retrieve document chunks relevant to the query.
             - Node 2: Fetch the Question and provide the answers.
-            - Node 3: Once the answer is provided END the Graph Execuetion.
-            - Edge: Connects retrieve → QA -> END.
+            - Edge: Connects retrieve → QA.
             """
