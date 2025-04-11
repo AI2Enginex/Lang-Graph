@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, END
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxass"
+api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyC3eK--KpzUruD-Lf43oQaGbMTmCU6ab_k"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -78,7 +78,62 @@ class QueryState(BaseModel):
     next: Optional[str] = None
     rejection_count: int = 0
 
+# Decalring a class PromptTemplates
+# for creating a instruction and response
+# template for the LLM
+# class PromptTemplates:
 
+#     '''
+#     class for creating prompt Instructions for the LLM
+#     '''
+    
+#     # creating the input prompt template 
+#     # as an input to the model
+#     @classmethod
+#     def chat_prompt_template(cls):
+
+#         try:
+#             template = """Respond to the following query.
+#                         Do not Provide any Note or any wrong answers.
+                        
+
+#                         Attempt: 
+#                         {attempt}.
+                        
+#                         Format:
+#                         {format_instructions}
+
+#                         Query:
+#                         {query}
+#                         """
+            
+#             return PromptTemplate(template=template.strip(),input_variables=["attempt","format_instructions","query"])
+
+#         except Exception as e:
+#             return e
+        
+#     @classmethod
+#     def comma_seperated_prompt_template(cls):
+
+#         try:
+#             template = """You are a helpful assistant.
+
+#                         Respond to the following query by listing the items as instructed.
+                        
+#                         Attempt: 
+#                         {attempt}.
+                        
+#                         Format:
+#                         {format_instructions}
+
+#                         Query:
+#                         {query}
+#                         """
+#             return PromptTemplate(template=template.strip(),input_variables=["attempt","format_instructions","query"])
+
+#         except Exception as e:
+#             return e
+        
 # Decalring a class PromptTemplates
 # for creating a instruction and response
 # template for the LLM
@@ -219,6 +274,34 @@ class HumanInTheLoop(ChatGoogleGENAI):
         print('Error in generate_output: ', e)
         return state
 
+    '''
+
+    '''
+    # generate output Node
+    def generate_output(self, state):
+        try:
+            # inputs = {
+            #     "query": state.query,
+            #     "format_instructions": PydanticOutputs.DictOutputParser(method=self.opstate).get_format_instructions(),
+            #     "attempt": state.rejection_count + 1
+            # }
+
+            messages = PromptTemplates.chat_prompt_template().format(
+                attempt=state.rejection_count + 1,
+                format_instructions=PydanticOutputs.DictOutputParser(method=self.opstate).get_format_instructions(),
+                query=state.query)
+            response = self.llm.invoke(messages)
+            result = PydanticOutputs.DictOutputParser(method=self.opstate).parse(response.content)
+
+            return self.state_cls(
+                query=state.query,
+                output=result.content,
+                rejection_count=state.rejection_count,
+                next="await_human"
+            )
+        except Exception as e:
+            print('Error in generate_output: ', e)
+            return state
     '''
     # generate output Node
     def generate_output(self, state):
