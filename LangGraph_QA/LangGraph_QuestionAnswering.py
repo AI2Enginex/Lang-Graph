@@ -1,5 +1,6 @@
 from PyPDF2 import PdfReader
-from typing_extensions import TypedDict
+from pydantic import BaseModel
+from typing import List
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain.vectorstores import FAISS
@@ -19,10 +20,11 @@ key = os.environ.get('GOOGLE_API_KEY')
 
 
 # defining a class QAState
-# inherits TypeDice
-class QAState(TypedDict):
+# inherits BaseModel
+
+class QAState(BaseModel):
     question: str
-    retrieved_chunks: list[str]
+    retrieved_chunks: List[str]
     answer: str
     prompt_type: str  
                         
@@ -411,8 +413,7 @@ class PromptTemplates:
             return PromptTemplate(template=prompt.strip(), input_variables=["context", "question"])
         except Exception as e:
             return e
-
-# =========================== PROMPT MANAGER CLASS ============================
+        
 class PromptManager:
     def __init__(self):
         """
@@ -439,8 +440,6 @@ class PromptManager:
         if not prompt_function:
             raise ValueError(f"Prompt '{prompt_name}' not found! Available prompts: {list(self.prompt_dict.keys())}")
         return prompt_function()  # Call the function to get the PromptTemplate
-    
-# =========================== TEXT PREPARATION CLASS ============================
 
 class PrepareText:
     """
@@ -535,49 +534,47 @@ class QASystem(PrepareText, ChatGoogleGENAI):
             overlap=over_lap, 
             model=model
         )
+    
 
+    # functions for extracting the chunks
     def retrieve_chunks(self, state: QAState):
         try:
-            docs = self.vector_store.similarity_search(state['question'], k=4)
+            docs = self.vector_store.similarity_search(state.question, k=4)
             retrieved_chunks = [doc.page_content for doc in docs]
-            return {
-                        'question': state['question'],
-                        'retrieved_chunks': retrieved_chunks
-                    }
 
+            return QAState(
+                question=state.question,
+                retrieved_chunks=retrieved_chunks,
+                answer=state.answer,
+                prompt_type=state.prompt_type
+            )
         except Exception as e:
-            return e
-        
-    def answer_questions(self,state: QAState):
+            print("Error in retrieve_chunks:", e)
+            return state
+
+    def answer_questions(self, state: QAState):
         """
         Uses the selected prompt template to answer a question based on retrieved document chunks.
-
-        Args:
-            state (QAState): The current state containing the question and retrieved chunks.
-            prompt_type (str): The name of the prompt template to use (default is 'key_word_extraction').
-
-        Returns:
-            Updated state with the generated answer.
         """
-        prompt_manager = PromptManager()
-
         try:
-            # Get user-selected prompt type
-            prompt_template = prompt_manager.get_prompt(state['prompt_type'])
-    
-            context = "\n\n".join(state['retrieved_chunks'])
-            prompt = prompt_template.format(context=context, question=state['question'])
-            response = self.llm.invoke(prompt)
-            return {
-                "question": state["question"],
-                "retrieved_chunks": state["retrieved_chunks"],
-                "answer": response.content
-            }
+            prompt_manager = PromptManager()
+            prompt_template = prompt_manager.get_prompt(state.prompt_type)
 
-        except ValueError as e:
-            print(f"Error: {e}")
-            return {"question": state["question"], "retrieved_chunks": state["retrieved_chunks"], "answer": state["answer"]}
-        
+            context = "\n\n".join(state.retrieved_chunks)
+            prompt = prompt_template.format(context=context, question=state.question)
+            response = self.llm.invoke(prompt)
+
+            return QAState(
+                question=state.question,
+                retrieved_chunks=state.retrieved_chunks,
+                answer=response.content,
+                prompt_type=state.prompt_type
+            )
+
+        except Exception as e:
+            print("Error in answer_questions:", e)
+            return state
+
 # Class for QASystem Execuetion
 # creating a Graph Execuetion flow
 class QASystemGraphExecuetion(QASystem):
