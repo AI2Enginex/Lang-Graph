@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, END
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyC3eK--KpzUruD-Lf43oQaGbMTmCU6ab_k"
+api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxxxx"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -40,7 +40,7 @@ class ChatGoogleGENAI:
     def __init__(self):
         
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
-        self.llm=ChatGoogleGenerativeAI(temperature=0.8,model="gemini-1.5-flash", google_api_key=key,top_p=1.0,
+        self.llm=ChatGoogleGenerativeAI(temperature=0.85,model="gemini-1.5-flash", google_api_key=key,top_p=1.0,
             top_k=32,
             candidate_count=1,
             max_output_tokens=3000)
@@ -57,7 +57,6 @@ class LLMOutputOnlyString(BaseModel):
 class QueryStateForString(BaseModel):
     query: str
     output: Optional[str] = None # the LLM is expected to output only as a string.
-    rejection_count: int = 0
 
 # Declaring LLMOutput Model class
 # this is how the LLM is expected to 
@@ -74,7 +73,6 @@ class QueryState(BaseModel):
     output: Optional[Union[str, List[str]]] = None # the LLM is expected to output a string or a list of strings
     human_approval: Optional[str] = None
     next: Optional[str] = None
-    rejection_count: int = 0
 
 class PromptTemplates:
 
@@ -90,11 +88,6 @@ class PromptTemplates:
         try:
             template = """Respond to the following query.
                         Do not Provide any Note or any wrong answers.
-                        
-
-                        Attempt: 
-                        {attempt}.
-                        
                         Format:
                         {format_instructions}
 
@@ -113,11 +106,7 @@ class PromptTemplates:
         try:
             template = """You are a helpful assistant.
 
-                        Respond to the following query by listing the items as instructed.
-                        
-                        Attempt: 
-                        {attempt}.
-                        
+                        Respond to the following query by listing the items as instructed. 
                         Format:
                         {format_instructions}
 
@@ -180,8 +169,7 @@ class HumanInTheLoop(ChatGoogleGENAI):
         try:
             inputs = {
                 "query": state.query,
-                "format_instructions": PydanticOutputs.DictOutputParser(method=self.opstate).get_format_instructions(),
-                "attempt": state.rejection_count + 1
+                "format_instructions": PydanticOutputs.DictOutputParser(method=self.opstate).get_format_instructions()
             }
 
             messages = PromptTemplates.chat_prompt_template().format(**inputs)
@@ -191,7 +179,6 @@ class HumanInTheLoop(ChatGoogleGENAI):
             return self.state_cls(
                 query=state.query,
                 output=result.content,
-                rejection_count=state.rejection_count,
                 
             )
         except Exception as e:
@@ -264,82 +251,5 @@ class GraphForHumanInTheLoop(HumanInTheLoop):
             print(f"Fatal error running LangGraph: {e}")
 
 
-# This class handles running the chatbot and keeping track of user decisions (like rejection or approval)
-class Execuetion:
-
-    # When we create an Execuetion object, we give it the user's input, the number of rejections, and whether the user approved the result
-    def __init__(self, user_input: None, rejection_count: None, human_approval: None):
-
-        # Save the user's question or message
-        self.user_input = user_input
-
-        # Keep track of how many times the user has rejected the chatbot's response
-        self.rejection_count = rejection_count
-
-        # Store whether the user approved the last chatbot response ('yes' or 'no')
-        self.human_approval = human_approval
-
-        # Create a chatbot graph (a flow of steps) using specific input/output state classes
-        self.g = GraphForHumanInTheLoop(state=QueryStateForString, opstate=LLMOutputOnlyString)
-
-    # This function runs the chatbot and gets a response based on the user input
-    def get_chatbot_output(self):
-        try:
-            # Try to run the chatbot and return its result
-            return self.g.execuete_graph(user_query=self.user_input)
-        except Exception as e:
-            # If there's an error, return the error message
-            return e
-
-    # Recursive function to handle human approval
-    def HITL_handeling(self):
-        
-        """Recursive function to handle the approval/rejection cycle with dictionary state."""
-        
-        # Execute the graph and get the result
-        chatbot_result = self.get_chatbot_output()
-        print(chatbot_result['output'])
-        # Ask for human input for approval or rejection
-        human_input = input("Enter 'yes' for approval or 'no' for rejection: ").strip().lower()
-        
-        # Update the dictionary values based on the user input
-        if human_input == 'yes':
-            self.human_approval = 'yes'
-            print("Approval granted. Final Output:")
-            return {"query": self.user_input,"reply": chatbot_result['output'] ,"total_rejections": self.rejection_count}  # End recursion and return the result
-        
-        elif human_input == 'no':
-            # Increment rejection count if rejected
-            self.rejection_count += 1
-            chatbot_result['rejection_count'] = self.rejection_count  # Update rejection count in the dictionary
-            chatbot_result['next'] = 'await_human'  # Keep the flow as 'await_human' for the next prompt
-            
-            print(f"Rejection count: {self.rejection_count}")
-            print("Re-running the process for updated output...")
-            
-            # Re-initialize the graph for another attempt
-            g = GraphForHumanInTheLoop(state=QueryStateForString, opstate=LLMOutputOnlyString)
-            
-            # Recursive call to handle the next attempt
-            return self.HITL_handeling()
-        
-        else:
-            # If input is invalid, prompt again
-            print("Invalid input. Please enter 'yes' or 'no'.")
-            return self.HITL_handeling()
-    
-
-# Main function to start the process
 if __name__ == "__main__":
-    user_input = input("Enter your query: ")
-    
-    e = Execuetion(user_input=user_input,rejection_count=0,human_approval=None)
-
-    # Start the recursive process
-    final_result = e.HITL_handeling()
-
-    # Once approved, print the final result
-    if final_result:
-        print("Final result after approval:")
-        print(final_result)
-
+    pass
