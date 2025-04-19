@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, END
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxxxxxxxxxxxx"
+api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyC3eK--KpzUruD-Lf43oQaGbMTmCU6ab_k"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)

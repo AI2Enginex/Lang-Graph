@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, END
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyC3eK--KpzUruD-Lf43oQaGbMTmCU6ab_k"
+api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxxxxxxxx"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -408,7 +408,7 @@ class GraphForHumanInTheLoop(HumanInTheLoop):
             graph_builder = self.build_graph()
             execuetor = graph_builder.compile()
             
-            initial_state = QueryState(query=user_query)
+            initial_state = self.state_cls(query=user_query)
             result = execuetor.invoke(initial_state)
             return result
         except Exception as e:

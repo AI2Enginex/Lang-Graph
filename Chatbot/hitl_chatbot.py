@@ -1,4 +1,5 @@
 import os
+import re
 from pydantic import BaseModel, Field
 from typing import Optional, Union, List
 from langgraph.graph import StateGraph
@@ -9,12 +10,18 @@ from langgraph.graph import StateGraph, END
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxxxxxxx"
+api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxxxxxxxxxxx"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
 key = os.environ.get('GOOGLE_API_KEY')
 
+def clean_answer(text):
+        """
+        This function takes in a string input and removes any special characters
+        """
+        # Keep letters, numbers, whitespace, and standard punctuation
+        return re.sub(r"[^\w\s.,:;!?'-]", '', text)
 
 class GeminiModel:
     def __init__(self):
@@ -57,7 +64,7 @@ class LLMOutputOnlyString(BaseModel):
 class QueryStateForString(BaseModel):
     query: str
     output: Optional[str] = None # the LLM is expected to output only as a string.
-    rejection_count: int = 0
+    
 
 # Declaring LLMOutput Model class
 # this is how the LLM is expected to 
@@ -99,10 +106,6 @@ class PromptTemplates:
         try:
             template = """Respond to the following query.
                         Do not Provide any Note or any wrong answers.
-                        
-
-                        Attempt: 
-                        {attempt}.
                         
                         Format:
                         {format_instructions}
@@ -189,8 +192,8 @@ class HumanInTheLoop(ChatGoogleGENAI):
         try:
             inputs = {
                 "query": state.query,
-                "format_instructions": PydanticOutputs.DictOutputParser(method=self.opstate).get_format_instructions(),
-                "attempt": state.rejection_count + 1
+                "format_instructions": PydanticOutputs.DictOutputParser(method=self.opstate).get_format_instructions()
+                
             }
 
             messages = PromptTemplates.chat_prompt_template().format(**inputs)
@@ -199,8 +202,7 @@ class HumanInTheLoop(ChatGoogleGENAI):
 
             return self.state_cls(
                 query=state.query,
-                output=result.content,
-                rejection_count=state.rejection_count,
+                output=result.content
                 
             )
         except Exception as e:
@@ -316,8 +318,6 @@ class HandleRejectionLoop:
             print("Error in handle_rejection:", e)
             return state
 
-    
-
 # --------------------------
 # Recursive flow function
 # --------------------------
@@ -325,7 +325,7 @@ def run_chatbot_flow(state: None,cls_name: None):
     # Generate response
     g = GraphForHumanInTheLoop(state=QueryStateForString, opstate=LLMOutputOnlyString)
     result = g.execuete_graph(user_query=state.query)
-
+    print(result)
     # Update state with new output
     state.output = result['output']
     print("\nChatbot Output:", state.output)
@@ -339,8 +339,9 @@ def run_chatbot_flow(state: None,cls_name: None):
 
     # If approved, return the result
     if state.approval == 'yes':
+        final_clean_text = clean_answer(state.output.replace("\n", " ").strip())
         print("\nApproved after", state.rejection_count, "rejection(s).")
-        return {'query': state.query, "output": state.output, "rejections": state.rejection_count}
+        return {'query': state.query, "output": final_clean_text, "rejections": state.rejection_count}
     
     # Otherwise, retry recursively
     else:
@@ -353,6 +354,6 @@ def run_chatbot_flow(state: None,cls_name: None):
 if __name__ == "__main__":
     user_input = input("Ask your question here: ")
     final_result = run_chatbot_flow(state=UpdateState(query=user_input),cls_name=UpdateState)
-
     print("\nFinal Result:")
     print(final_result)
+    
