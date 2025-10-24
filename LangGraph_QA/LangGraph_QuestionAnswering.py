@@ -12,7 +12,7 @@ import os
 import cleantext
 # import time
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyCkML43SN0LPwJympfa7JVyJtsIkRF1_sA"
+api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyBdfoszxS7rFVNLDG8_5JpkRg953A4sEVg"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -489,7 +489,7 @@ class PrepareText:
         try:
             # Initialize TextChunks and split cleaned text into document chunks
             TextChunks.initialize(separator=separator, chunksize=chunksize, overlap=overlap)
-            return TextChunks.get_text_chunks(text=self.clean_data())
+            return TextChunks.get_text_chunks_doc(text=self.clean_data())
         except Exception as e:
             return e
 
@@ -509,7 +509,7 @@ class PrepareText:
         try:
             # Initialize embedding model and create vectors from document chunks
             Vectors.initialize(model_name=model)
-            return Vectors().generate_vectors_from_text(
+            return Vectors().generate_vectors_from_documents(
                 chunks=self.get_chunks(separator, chunksize, overlap)
             )
         except Exception as e:
@@ -640,9 +640,9 @@ if __name__ == "__main__":
     question = input("Ask your Question here: ")
     user_prompt_type = input("Choose prompt type (key word extraction / chain of thoughts / verification prompt): ")
     qa_system = QASystemGraphExecuetion(
-                                  data='E:\Lang-Graph\wings_of_fire.pdf',
+                                  data='E:/Lang-Graph/RILAGM.pdf',
                                   processing_delimiter='\n\n',
-                                  total_chunk=1000,
+                                  total_chunk=4000,
                                   overlapping=300,embedding_model='models/gemini-embedding-001')
     answer = qa_system.answer(question=question, prompt=user_prompt_type)
     

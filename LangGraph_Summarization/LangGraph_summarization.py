@@ -349,7 +349,7 @@ class PromptTemplates:
         try:
             reduce_template = """
             You are provided with multiple chunk-level summaries of a PDF document.
-            Combine these summaries into a clear, cohesive final summary with no more than 20 key points.
+            Combine these summaries into a clear, cohesive final summary.
             Do not repeat points; focus on merging and refining.
 
             Partial Summaries:
@@ -756,10 +756,10 @@ if __name__ == "__main__":
     query = "Summarize this document briefly."
     
     if chain_type == 'simple':
-        rag = StuffGraphExecuetion(data='E:/Lang-Graph/notice-of-agm-2024-25.pdf',processing_delimiter='\n\n',total_chunk=1000,overlapping=300,embedding_model='models/gemini-embedding-001')
+        rag = StuffGraphExecuetion(data='E:/Lang-Graph/RILAGM.pdf',processing_delimiter='\n\n',total_chunk=5000,overlapping=300,embedding_model='models/gemini-embedding-001')
         summary = rag.summarize(query=query)
         print("Summary:\n", summary)
     else:
-        rag = MapReduceGraphExecuetion(data='E:\Lang-Graph\hearing.pdf',processing_delimiter='\n\n',total_chunk=1000,overlapping=300,embedding_model='models/gemini-embedding-001')
+        rag = MapReduceGraphExecuetion(data='E:/Lang-Graph/RILAGM.pdf',processing_delimiter='\n\n',total_chunk=5000,overlapping=100,embedding_model='models/gemini-embedding-001')
         summary = rag.summarize(query=query)
         print("Summary:\n", summary)
