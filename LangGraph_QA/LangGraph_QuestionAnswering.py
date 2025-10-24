@@ -12,7 +12,7 @@ import os
 import cleantext
 # import time
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxxxxxxxxxxxxxxxx"
+api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyCkML43SN0LPwJympfa7JVyJtsIkRF1_sA"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -33,7 +33,7 @@ class GeminiModel:
     def __init__(self):
 
         # Initializing the GenerativeModel object with the 'gemini-pro' model
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
         # Creating a GenerationConfig object with specific configuration parameters
         self.generation_config = genai.GenerationConfig(
             temperature=0,
@@ -53,7 +53,7 @@ class ChatGoogleGENAI:
     def __init__(self):
         
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
-        self.llm=ChatGoogleGenerativeAI(temperature=0.7,model="gemini-1.5-flash", google_api_key=key,top_p=1.0,
+        self.llm=ChatGoogleGenerativeAI(temperature=0.7,model="gemini-2.5-flash", google_api_key=key,top_p=1.0,
             top_k=32,
             candidate_count=1,
             max_output_tokens=3000)
@@ -62,7 +62,7 @@ class ChatGoogleGENAI:
 class EmbeddingModel:
     def __init__(self, model_name):
         # Initializing GoogleGenerativeAIEmbeddings object with the specified model name
-        self.embeddings = GoogleGenerativeAIEmbeddings(model=model_name)
+        self.embeddings = GoogleGenerativeAIEmbeddings(model=model_name, google_api_key=key)
 
 class GenerateContext(GeminiModel):
     def __init__(self):
@@ -227,7 +227,7 @@ class Vectors:
             model_name (str): Name or type of the embedding model.
         """
         try:
-            cls.embeddings = EmbeddingModel(model_name=model_name)
+            cls.embeddings = EmbeddingModel(model_name=model_name).embeddings
             print(f"Embedding model initialized with {model_name}")
         except Exception as e:
             print(f"Failed to initialize embedding model: {e}")
@@ -248,7 +248,7 @@ class Vectors:
             print("Embedding model is not initialized!")
             return None
         try:
-            return FAISS.from_texts(chunks, embedding=cls.embeddings.embeddings)
+            return FAISS.from_texts(chunks, embedding=cls.embeddings)
         except Exception as e:
             print(f"Error in generate_vectors_from_text: {e}")
             return None
@@ -268,7 +268,7 @@ class Vectors:
             print("Embedding model is not initialized!")
             return None
         try:
-            return FAISS.from_documents(chunks, embedding=cls.embeddings.embeddings)
+            return FAISS.from_documents(chunks, embedding=cls.embeddings)
         except Exception as e:
             print(f"Error in generate_vectors_from_documents: {e}")
             return None
@@ -489,7 +489,7 @@ class PrepareText:
         try:
             # Initialize TextChunks and split cleaned text into document chunks
             TextChunks.initialize(separator=separator, chunksize=chunksize, overlap=overlap)
-            return TextChunks.get_text_chunks_doc(text=self.clean_data())
+            return TextChunks.get_text_chunks(text=self.clean_data())
         except Exception as e:
             return e
 
@@ -509,7 +509,7 @@ class PrepareText:
         try:
             # Initialize embedding model and create vectors from document chunks
             Vectors.initialize(model_name=model)
-            return Vectors().generate_vectors_from_documents(
+            return Vectors().generate_vectors_from_text(
                 chunks=self.get_chunks(separator, chunksize, overlap)
             )
         except Exception as e:
@@ -643,7 +643,7 @@ if __name__ == "__main__":
                                   data='E:\Lang-Graph\wings_of_fire.pdf',
                                   processing_delimiter='\n\n',
                                   total_chunk=1000,
-                                  overlapping=300,embedding_model='models/embedding-001')
+                                  overlapping=300,embedding_model='models/gemini-embedding-001')
     answer = qa_system.answer(question=question, prompt=user_prompt_type)
     
     print("Question:", question)

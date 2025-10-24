@@ -12,8 +12,8 @@ import os
 import cleantext
 import time
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyC4IsEuWU6xO3Ps81ZrYDQF4afLOrVDRb8"
-
+api_key =  "AIzaSyC4m4mJdC4Meic3W6501FjdFX-giYFgE28"
+os.environ['GOOGLE_API_KEY'] = api_key
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
 key = os.environ.get('GOOGLE_API_KEY')
@@ -33,7 +33,7 @@ class GeminiModel:
     def __init__(self):
 
         # Initializing the GenerativeModel object with the 'gemini-pro' model
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
         # Creating a GenerationConfig object with specific configuration parameters
         self.generation_config = genai.GenerationConfig(
             temperature=0,
@@ -53,7 +53,7 @@ class ChatGoogleGENAI:
     def __init__(self):
         
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
-        self.llm=ChatGoogleGenerativeAI(temperature=0.7,model="gemini-1.5-flash", google_api_key=key,top_p=1.0,
+        self.llm=ChatGoogleGenerativeAI(temperature=0.7,model="gemini-2.5-flash", google_api_key=key,top_p=1.0,
             top_k=32,
             candidate_count=1,
             max_output_tokens=3000)
@@ -62,7 +62,7 @@ class ChatGoogleGENAI:
 class EmbeddingModel:
     def __init__(self, model_name):
         # Initializing GoogleGenerativeAIEmbeddings object with the specified model name
-        self.embeddings = GoogleGenerativeAIEmbeddings(model=model_name)
+        self.embeddings = GoogleGenerativeAIEmbeddings(model=model_name, google_api_key=key)
 
 class GenerateContext(GeminiModel):
     def __init__(self):
@@ -73,7 +73,7 @@ class GenerateContext(GeminiModel):
             # Generating response content based on the query using the inherited model
             return [response for response in self.model.generate_content(query)]
         except Exception as e:
-            return e
+            raise e
 
 
 # =========================== READ FILE UTILITY ============================
@@ -109,7 +109,7 @@ class ReadFile:
             return text  # Return the extracted text from the entire PDF
         except Exception as e:
             # In case of any exception (e.g., file not found, read error), return the exception
-            return e
+            raise e
 
     @classmethod
     def read_file_and_store_elements(cls, filename):
@@ -137,7 +137,7 @@ class ReadFile:
             return text  # Return the concatenated text content
         except Exception as e:
             # In case of any exception (e.g., file not found), return the exception
-            return e
+            raise e
 
 
 # =========================== TEXT CHUNKING UTILITY ============================
@@ -227,7 +227,7 @@ class Vectors:
             model_name (str): Name or type of the embedding model.
         """
         try:
-            cls.embeddings = EmbeddingModel(model_name=model_name)
+            cls.embeddings = EmbeddingModel(model_name=model_name).embeddings
             print(f"Embedding model initialized with {model_name}")
         except Exception as e:
             print(f"Failed to initialize embedding model: {e}")
@@ -248,7 +248,7 @@ class Vectors:
             print("Embedding model is not initialized!")
             return None
         try:
-            return FAISS.from_texts(chunks, embedding=cls.embeddings.embeddings)
+            return FAISS.from_texts(chunks, embedding=cls.embeddings)
         except Exception as e:
             print(f"Error in generate_vectors_from_text: {e}")
             return None
@@ -268,7 +268,7 @@ class Vectors:
             print("Embedding model is not initialized!")
             return None
         try:
-            return FAISS.from_documents(chunks, embedding=cls.embeddings.embeddings)
+            return FAISS.from_documents(chunks, embedding=cls.embeddings)
         except Exception as e:
             print(f"Error in generate_vectors_from_documents: {e}")
             return None
@@ -296,7 +296,7 @@ class PromptTemplates:
             """
             return PromptTemplate(template=prompt_template.strip(), input_variables=["context"])
         except Exception as e:
-            return e
+            raise e
         
     @classmethod
     def summarisation_prompt(cls):
@@ -319,7 +319,7 @@ class PromptTemplates:
             """
             return PromptTemplate(template=prompt_template.strip(), input_variables=["context"])
         except Exception as e:
-            return e
+            raise e
 
     @classmethod
     def map_prompt(cls):
@@ -339,7 +339,7 @@ class PromptTemplates:
             """
             return PromptTemplate(template=map_template.strip(), input_variables=["context"])
         except Exception as e:
-            return e
+            raise e
 
     @classmethod
     def reduce_prompt(cls):
@@ -359,7 +359,7 @@ class PromptTemplates:
             """
             return PromptTemplate(template=reduce_template.strip(), input_variables=["context"])
         except Exception as e:
-            return e
+            raise e
 
 # =========================== TEXT PREPARATION CLASS ============================
 
@@ -394,7 +394,7 @@ class PrepareText:
                 extra_spaces=True
             )
         except Exception as e:
-            return e
+            raise e
 
     def get_chunks(self, separator=None, chunksize=None, overlap=None):
         """
@@ -413,7 +413,7 @@ class PrepareText:
             TextChunks.initialize(separator=separator, chunksize=chunksize, overlap=overlap)
             return TextChunks.get_text_chunks_doc(text=self.clean_data())
         except Exception as e:
-            return e
+            raise e
 
     def create_text_vectors(self, separator=None, chunksize=None, overlap=None, model=None):
         """
@@ -435,7 +435,7 @@ class PrepareText:
                 chunks=self.get_chunks(separator, chunksize, overlap)
             )
         except Exception as e:
-            return e
+            raise e
 
 class StuffSummarizer(PrepareText,ChatGoogleGENAI):
     """
@@ -476,7 +476,7 @@ class StuffSummarizer(PrepareText,ChatGoogleGENAI):
                 "document_chunks": results,  # Ensure chunks are strings
             }
         except Exception as e:
-            return e
+            raise e
         
     # summarization function
     def summarize_chunks(self,state: SimpleDocState):
@@ -489,7 +489,7 @@ class StuffSummarizer(PrepareText,ChatGoogleGENAI):
             summary = response.content # Extracting the message
             return {"messages": state["messages"] + [summary], "document_chunks": state["document_chunks"]}
         except Exception as e:
-            return e
+            raise e
 
 class MapReduceSummarizer(PrepareText,ChatGoogleGENAI):
     """
@@ -533,7 +533,7 @@ class MapReduceSummarizer(PrepareText,ChatGoogleGENAI):
                 "partial_summaries": []
             }
         except Exception as e:
-            return e
+            raise e
     
     # Map stage function
     def map_summarize(self, state: ReducedDocState):
@@ -556,7 +556,7 @@ class MapReduceSummarizer(PrepareText,ChatGoogleGENAI):
                 "partial_summaries": partial_summaries
             }
         except Exception as e:
-            return e
+            raise e
     
     # Reduce stage function
     def reduce_summarize(self, state: ReducedDocState):
@@ -576,7 +576,7 @@ class MapReduceSummarizer(PrepareText,ChatGoogleGENAI):
                 "partial_summaries": state["partial_summaries"]
             }
         except Exception as e:
-            return e
+            raise e
 
 
 # Class for StuffSummarization
@@ -625,7 +625,7 @@ class StuffGraphExecuetion(StuffSummarizer):
             return graph
         except Exception as e:
             # Return the exception if any error occurs
-            return e
+            raise e
 
     def summarize(self, query: str):
         """
@@ -657,7 +657,7 @@ class StuffGraphExecuetion(StuffSummarizer):
             return final_state["messages"][-1]
         except Exception as e:
             # Return the exception if an error occurs
-            return e
+            raise e
 
 
 # Class for MapReduceSummarization
@@ -711,8 +711,8 @@ class MapReduceGraphExecuetion(MapReduceSummarizer):
 
             return graph
         except Exception as e:
-            # Return exception if any error occurs
-            return e
+            # raise exception if any error occurs
+            raise e
 
     def summarize(self, query: str):
         """
@@ -747,8 +747,8 @@ class MapReduceGraphExecuetion(MapReduceSummarizer):
             # Return the final summarized message
             return final_state["messages"][-1]
         except Exception as e:
-            # Return exception if error occurs
-            return e
+            # raise exception if error occurs
+            raise e
         
 if __name__ == "__main__":
     
@@ -756,10 +756,10 @@ if __name__ == "__main__":
     query = "Summarize this document briefly."
     
     if chain_type == 'simple':
-        rag = StuffGraphExecuetion(data='E:\Lang-Graph\wings_of_fire.pdf',processing_delimiter='\n\n',total_chunk=1000,overlapping=300,embedding_model='models/embedding-001')
+        rag = StuffGraphExecuetion(data='E:/Lang-Graph/notice-of-agm-2024-25.pdf',processing_delimiter='\n\n',total_chunk=1000,overlapping=300,embedding_model='models/gemini-embedding-001')
         summary = rag.summarize(query=query)
         print("Summary:\n", summary)
     else:
-        rag = MapReduceGraphExecuetion(data='E:\Lang-Graph\wings_of_fire.pdf',processing_delimiter='\n\n',total_chunk=1000,overlapping=300,embedding_model='models/embedding-001')
+        rag = MapReduceGraphExecuetion(data='E:\Lang-Graph\hearing.pdf',processing_delimiter='\n\n',total_chunk=1000,overlapping=300,embedding_model='models/gemini-embedding-001')
         summary = rag.summarize(query=query)
         print("Summary:\n", summary)
