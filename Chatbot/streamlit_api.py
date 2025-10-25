@@ -1,121 +1,154 @@
-
 import streamlit as st
-from chatbot import GraphForHumanInTheLoop,QueryStateForString,LLMOutputOnlyString
-# This class handles running the chatbot and keeping track of user decisions (like rejection or approval)
-class Execuetion:
-    # When we create an Execuetion object, we give it the user's input, the number of rejections, and whether the user approved the result
-    def __init__(self, user_input, rejection_count=0, human_approval=None):
+from chatbot import GraphForHumanInTheLoop, QueryStateForString, LLMOutputOnlyString
 
-        # user's message
-        self.user_input = user_input
-        # total rejections per response
-        self.rejection_count = rejection_count
-        # to aprove human response
-        self.human_approval = human_approval
 
-        # graph execution
-        self.g = GraphForHumanInTheLoop(state=QueryStateForString, opstate=LLMOutputOnlyString)
-    
-    # function for getting the result
+# =========================================================
+# Execution class
+# Handles chatbot logic, stores user input, rejection count, and model interactions
+# =========================================================
+class Execution:
+    def __init__(self, user_input):
+        """
+        Initialize the chatbot execution session.
+        Args:
+            user_input (str): The user's input question or message.
+        """
+        self.user_input = user_input                # Store user input
+        self.rejection_count = 0                    # Count number of times user rejects the output
+        self.human_approval = None                  # Track whether user approved the response
+        # Initialize the chatbot graph with predefined state and output configuration
+        self.g = GraphForHumanInTheLoop(
+            state=QueryStateForString,
+            opstate=LLMOutputOnlyString
+        )
+
     def get_chatbot_output(self):
+        """
+        Run the chatbot model and return its response.
+        Returns:
+            dict: Output from chatbot or error message.
+        """
         try:
             return self.g.execuete_graph(user_query=self.user_input)
         except Exception as e:
             return {"output": str(e)}
 
-# Streamlit App Handler class that manages the chatbot interface
+
+# =========================================================
+# HITLChatbotApp class
+# Manages the Streamlit UI and interaction flow
+# =========================================================
 class HITLChatbotApp:
     def __init__(self):
-        # Check if the chatbot's state exists in memory (session). If not, set it to None.
-        # This keeps our data safe between button clicks (like user input, responses, etc.)
+        """
+        Initialize Streamlit session state variables
+        to maintain state between user interactions.
+        """
+        # Store the chatbot execution object
         if 'execution' not in st.session_state:
-            st.session_state.execution = None  # This will store the Execuetion object
+            st.session_state.execution = None
 
+        # Store the chatbot's latest generated response
         if 'chatbot_result' not in st.session_state:
-            st.session_state.chatbot_result = None  # This stores the current chatbot reply
+            st.session_state.chatbot_result = None
 
+        # Store the final approved answer
         if 'final_output' not in st.session_state:
-            st.session_state.final_output = None  # This will store the final accepted answer
+            st.session_state.final_output = None
 
-    # Called when the user first submits their question
     def initialize_execution(self, user_input):
-        # Create a new chatbot runner with the user's question
-        st.session_state.execution = Execuetion(user_input=user_input)
-
-        # Generate the chatbot's first response using the input
+        """
+        Create a new Execution instance for the given user input
+        and fetch the chatbot's first response.
+        """
+        st.session_state.execution = Execution(user_input=user_input)
         st.session_state.chatbot_result = st.session_state.execution.get_chatbot_output()
+        st.session_state.final_output = None  # Reset final output if user starts new query
 
-        # Clear any previous final output
-        st.session_state.final_output = None
-
-    # This function shows the chatbot's response and Accept/Reject buttons
     def show_chatbot_response(self):
+        """
+        Display the chatbot's current response and show
+        Accept/Reject buttons for user feedback.
+        """
         st.subheader("Chatbot Response:")
-        st.write(st.session_state.chatbot_result['output'])  # Display the current response
+        st.write(st.session_state.chatbot_result['output'])  # Display chatbot reply
 
-        # Two columns for Accept and Reject buttons side-by-side
+        # Display two buttons side by side (Accept / Reject)
         col1, col2 = st.columns(2)
 
-        # If the user clicks "Accept"
+        # --- Accept Button ---
         with col1:
-            if st.button("Accept"):
+            # Use a unique key to prevent Streamlit from reusing the button state
+            if st.button("Accept", key="accept_btn"):
                 self.handle_accept()
 
-        # If the user clicks "Reject"
+        # --- Reject Button ---
         with col2:
-            if st.button("Reject"):
+            if st.button("Reject", key="reject_btn"):
                 self.handle_reject()
 
-    # If the user accepts the response, store it as the final output
     def handle_accept(self):
-        st.session_state.execution.human_approval = 'yes'  # Mark it as approved
+        """
+        Handle when the user accepts the chatbot response.
+        Save the final result in session_state for display.
+        """
+        st.session_state.execution.human_approval = 'yes'  # Mark approval
 
-        # Save the final result along with the original input and rejection count
+        # Store accepted output details
         st.session_state.final_output = {
             "query": st.session_state.execution.user_input,
             "reply": st.session_state.chatbot_result['output'],
             "total_rejections": st.session_state.execution.rejection_count
         }
 
-    # If the user rejects the response, regenerate a new one
     def handle_reject(self):
-        # Increase the number of times user has rejected
+        """
+        Handle when the user rejects the chatbot response.
+        Increment rejection count and regenerate a new response.
+        """
+        # Increase the count of rejections
         st.session_state.execution.rejection_count += 1
 
-        # Re-create the chatbot logic (fresh graph for another try)
-        st.session_state.execution.g = GraphForHumanInTheLoop(
-            state=QueryStateForString, opstate=LLMOutputOnlyString
-        )
-
-        # Generate a new response with the same original input
+        # Get a new chatbot response for the same question
         st.session_state.chatbot_result = st.session_state.execution.get_chatbot_output()
 
-    # If the user accepted a response, show it as the final answer
+        # Force Streamlit to refresh UI and show the new response
+        st.rerun()
+
     def show_final_output(self):
+        """
+        Display the final approved chatbot response to the user.
+        """
         st.success("Final approved response:")
-        st.session_state.final_output['reply']  # Display the final accepted reply
+        st.write(st.session_state.final_output['reply'])
 
-    # Main function to run the whole app
     def run(self):
-        st.title("Human-in-the-Loop Chatbot")  # App title at the top
+        """
+        Main Streamlit UI loop that controls user input,
+        chatbot execution, and feedback interactions.
+        """
+        # --- App Title ---
+        st.title("Human-in-the-Loop Chatbot")
 
-        # Textbox for user to enter their question
+        # --- User Input Box ---
         user_input = st.text_input("Enter your question:")
 
-        # If user clicks Submit and entered a question
-        if st.button("Submit") and user_input:
-            self.initialize_execution(user_input)  # Start a new chatbot execution
+        # --- Submit Button ---
+        if st.button("Submit", key="submit_btn") and user_input:
+            self.initialize_execution(user_input)
 
-        # If there's a chatbot response but no final approval yet, show the Accept/Reject interface
+        # --- Show Chatbot Response if available ---
         if st.session_state.chatbot_result and not st.session_state.final_output:
             self.show_chatbot_response()
 
-        # If a final response has been accepted, display it
+        # --- Show Final Output if approved ---
         if st.session_state.final_output:
             self.show_final_output()
 
 
-# Run the app
+# =========================================================
+# Run the Streamlit Application
+# =========================================================
 if __name__ == "__main__":
     app = HITLChatbotApp()
     app.run()
