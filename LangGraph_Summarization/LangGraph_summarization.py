@@ -750,16 +750,84 @@ class MapReduceGraphExecuetion(MapReduceSummarizer):
             # raise exception if error occurs
             raise e
         
+        
+# ========================== SUMMARIZER MANAGER ==========================
+class SummarizerManager:
+    """
+    Manages document summarization using different chain types.
+    """
+
+    def __init__(self, file_path: str, separator, chunk_size: int, overlap: int, embedding_model: str):
+        self.file_path = file_path
+        self.separator = separator
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+        self.embedding_model = embedding_model
+
+    def get_summarizer(self, chain_type: str):
+        """
+        Returns the appropriate summarizer object based on chain_type.
+        """
+        try:
+            if chain_type.lower() == "simple":
+                return StuffGraphExecuetion(
+                    data=self.file_path,
+                    processing_delimiter=self.separator,
+                    total_chunk=self.chunk_size,
+                    overlapping=self.overlap,
+                    embedding_model=self.embedding_model
+                )
+            else:
+                return MapReduceGraphExecuetion(
+                    data=self.file_path,
+                    processing_delimiter=self.separator,
+                    total_chunk=self.chunk_size,
+                    overlapping=self.overlap,
+                    embedding_model=self.embedding_model
+                )
+        except Exception as e:
+            print(f"Error initializing summarizer for chain type '{chain_type}': {e}")
+            return None
+
+    def summarize(self, chain_type: str, query: str) -> str:
+        """
+        Summarize the document using the selected chain type.
+        """
+        try:
+            summarizer = self.get_summarizer(chain_type)
+            if summarizer is None:
+                return "Failed to initialize summarizer."
+            return summarizer.summarize(query=query)
+        except Exception as e:
+            print(f"Error during summarization: {e}")
+            return ""
+
+# ========================== MAIN EXECUTION ==========================
 if __name__ == "__main__":
-    
-    chain_type = input("Enter chain type: ")
-    query = "Summarize this document briefly."
-    
-    if chain_type == 'simple':
-        rag = StuffGraphExecuetion(data='E:/Lang-Graph/RILAGM.pdf',processing_delimiter='\n\n',total_chunk=5000,overlapping=300,embedding_model='models/gemini-embedding-001')
-        summary = rag.summarize(query=query)
+    try:
+        # File path and parameters
+        file_path = "E:/Lang-Graph/data.pdf"
+        separator = "\n\n"
+        chunk_size = 5000
+        overlap = 300
+        embedding_model = "models/gemini-embedding-001"
+
+        # User input
+        chain_type = input("Enter chain type (simple / other): ")
+        query = "Summarize this document briefly."
+
+        # Initialize summarizer manager
+        manager = SummarizerManager(
+            file_path=file_path,
+            separator=separator,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            embedding_model=embedding_model
+        )
+
+        # Generate summary
+        summary = manager.summarize(chain_type=chain_type, query=query)
         print("Summary:\n", summary)
-    else:
-        rag = MapReduceGraphExecuetion(data='E:/Lang-Graph/RILAGM.pdf',processing_delimiter='\n\n',total_chunk=5000,overlapping=100,embedding_model='models/gemini-embedding-001')
-        summary = rag.summarize(query=query)
-        print("Summary:\n", summary)
+
+    except Exception as e:
+        print(f"Error in main execution: {e}")

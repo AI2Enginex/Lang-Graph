@@ -40,7 +40,7 @@ class ChatGoogleGENAI:
     def __init__(self):
         
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
-        self.llm=ChatGoogleGenerativeAI(temperature=0.85,model="gemini-1.5-flash", google_api_key=key,top_p=1.0,
+        self.llm=ChatGoogleGenerativeAI(temperature=0.85,model="gemini-2.5-flash", google_api_key=key,top_p=1.0,
             top_k=32,
             candidate_count=1,
             max_output_tokens=3000)
