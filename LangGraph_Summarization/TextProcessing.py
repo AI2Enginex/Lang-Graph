@@ -1,4 +1,4 @@
-
+import cleantext
 from GeminiConfigs import EmbeddingModel
 from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter # pyright: ignore[reportMissingImports]
@@ -134,6 +134,80 @@ class Vectors:
             print(f"Error in generate_vectors_from_documents: {e}")
             return None
 
+# =========================== TEXT PREPARATION CLASS ============================
 
+class PrepareText:
+    """
+    Prepares and processes text from files.
+    Handles reading, cleaning, chunking, and vectorization of text.
+    """
+
+    def __init__(self, dir_name):
+        """
+        Constructor to read text from a file (PDF).
+
+        Args:
+            dir_name (str): Path to the directory/file containing the document.
+        """
+        # Reading the raw text from PDF file using ReadFile class
+        self.file = ReadFile().read_pdf_files(dir_name)
+
+    def clean_data(self):
+        """
+        Cleans the raw text by converting to lowercase, removing punctuation and extra spaces.
+
+        Returns:
+            str: Cleaned text.
+        """
+        try:
+            return cleantext.clean(
+                self.file,
+                lowercase=True,
+                punct=True,
+                extra_spaces=True
+            )
+        except Exception as e:
+            raise e
+
+    def get_chunks(self, separator=None, chunksize=None, overlap=None):
+        """
+        Splits cleaned text into document chunks.
+
+        Args:
+            separator (list): Separators to split text.
+            chunksize (int): Max size of each chunk.
+            overlap (int): Overlap between chunks.
+
+        Returns:
+            list: List of document chunks.
+        """
+        try:
+            # Initialize TextChunks and split cleaned text into document chunks
+            TextChunks.initialize(separator=separator, chunksize=chunksize, overlap=overlap)
+            return TextChunks.get_text_chunks_doc(text=self.clean_data())
+        except Exception as e:
+            raise e
+
+    def create_text_vectors(self, separator=None, chunksize=None, overlap=None, model=None):
+        """
+        Generates vector embeddings from the document chunks.
+
+        Args:
+            separator (list): Separators to split text.
+            chunksize (int): Chunk size.
+            overlap (int): Overlap size.
+            model (str): Name of embedding model.
+
+        Returns:
+            FAISS: Vector store containing document embeddings.
+        """
+        try:
+            # Initialize embedding model and create vectors from document chunks
+            Vectors.initialize(model_name=model)
+            return Vectors().generate_vectors_from_documents(
+                chunks=self.get_chunks(separator, chunksize, overlap)
+            )
+        except Exception as e:
+            raise e
 if __name__ == "__main__":
     pass
