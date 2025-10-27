@@ -6,10 +6,10 @@ import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.output_parsers import PydanticOutputParser, CommaSeparatedListOutputParser
 from langgraph.graph import StateGraph, END
-from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxxxxxxxxxx"
+api_key = os.environ['GOOGLE_API_KEY'] = "AIzaSyC4m4mJdC4Meic3W6501FjdFX-giYFgE28"
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -42,7 +42,6 @@ class ChatGoogleGENAI:
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
         self.llm=ChatGoogleGenerativeAI(temperature=0.85,model="gemini-2.5-flash", google_api_key=key,top_p=1.0,
             top_k=32,
-            candidate_count=1,
             max_output_tokens=3000)
 
 

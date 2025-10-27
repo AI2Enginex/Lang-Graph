@@ -2,3 +2,7 @@ bookmark.py
 RILAGM.pdf
 data.txt
 /SQLLLM/
+LangGraph_QA/__pycache__/
+LangGraph_Summarization/__pycache__/
+Chatbot/__pycache__/
+Chatbot/__pycache__/chatbot.cpython-312.pyc
