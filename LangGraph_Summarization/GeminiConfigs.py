@@ -2,7 +2,7 @@ from typing import Annotated
 
 from typing_extensions import TypedDict
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
 
@@ -11,7 +11,7 @@ import os
 
 
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key =  "AIzaSyC4m4mJdC4Meic3W6501FjdFX-giYFgE28"
+api_key =  "AIzaSyAFGgM-8k_oy7v9XKppu0mxQR-gduPaBYw"
 os.environ['GOOGLE_API_KEY'] = api_key
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -62,7 +62,7 @@ class ChatGoogleGENAI:
 class EmbeddingModel:
     def __init__(self, model_name):
         # Initializing GoogleGenerativeAIEmbeddings object with the specified model name
-        self.embeddings = GoogleGenerativeAIEmbeddings(model=model_name, google_api_key=key)
+        self.embeddings = HuggingFaceEmbeddings(model_name=model_name)
 
 class GenerateContext(GeminiModel):
     def __init__(self):

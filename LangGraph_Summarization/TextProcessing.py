@@ -129,7 +129,7 @@ class Vectors:
             print("Embedding model is not initialized!")
             return None
         try:
-            return FAISS.from_documents(chunks, embedding=cls.embeddings)
+            return FAISS.from_documents(chunks, embedding=cls.embeddings, normalize_L2=True)
         except Exception as e:
             print(f"Error in generate_vectors_from_documents: {e}")
             return None
