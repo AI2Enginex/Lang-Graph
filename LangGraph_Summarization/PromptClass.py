@@ -32,11 +32,10 @@ class PromptTemplates:
         try:
             prompt_template = """
             You are given a PDF document .
-            Your job is to generate a concise summary of the given document in not more than 200 words.
-            Try to give a brief summary by explaining each and every point from the satarting till the end.
-            Display the summary as if you are giving a presentation.
-
-            Try to summarize each line in the document.
+            Your job is to generate a concise summary of the given document in not more than 600 words.
+            Try to give a brief summary from starting till the end.
+            make sure no information is missed.
+            start the summary with "In this document..".
 
             Context:
             {context}
@@ -75,7 +74,7 @@ class PromptTemplates:
         try:
             reduce_template = """
             You are provided with multiple chunk-level summaries of a PDF document.
-            Combine these summaries into a clear, cohesive final summary in 200 words.
+            Combine these summaries into a clear, cohesive final summary.
             Do not repeat points; focus on merging and refining.
 
             Partial Summaries:

@@ -1,213 +1,190 @@
-import cleantext
-from GeminiConfigs import EmbeddingModel
 from PyPDF2 import PdfReader
-from langchain_text_splitters import RecursiveCharacterTextSplitter # pyright: ignore[reportMissingImports]
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
+from GeminiConfigs import EmbeddingModel
+import cleantext
 
 
-# =========================== READ FILE UTILITY ============================
+# ========================== FILE UTILITIES ============================
+
 class ReadFile:
     """
-    ReadFile class provides utility methods to read text content from files.
-    It supports reading PDF files and plain text files and returning their text content.
+    Utility to read text from PDFs or plain text files.
     """
 
     @classmethod
-    def read_pdf_files(cls, folder_name: str):
+    def read_pdf_file(cls, file_path: str) -> str:
         """
-        Reads and extracts text from a PDF file.
+        Reads and extracts text content from a PDF file.
+        Cleans basic layout noise (line breaks, hyphenation).
 
         Args:
-            folder_name (str): The path to the PDF file to be read.
+            file_path (str): Path to the PDF file.
 
         Returns:
-            str: The combined text extracted from all pages of the PDF file.
-            Exception: Returns the exception object if an error occurs while reading the file.
+            str: Combined text from all pages.
         """
         try:
-            text = ""  # Initialize an empty string to store extracted text
-            
-            # Open the PDF file in binary read mode
-            with open(folder_name, 'rb') as file:
-                reader = PdfReader(file)  # Create a PdfReader object to parse the PDF file
-                
-                # Iterate through each page in the PDF and extract text
-                for page_num in range(len(reader.pages)):
-                    text += reader.pages[page_num].extract_text()  # Append text from each page
-                    
-            return text  # Return the extracted text from the entire PDF
+            text_parts = []
+            with open(file_path, "rb") as file:
+                reader = PdfReader(file)
+                for page in reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        page_text = (
+                            page_text.replace("-\n", "")
+                            .replace("\n", " ")
+                            .replace("\t", " ")
+                        )
+                        page_text = " ".join(page_text.split())
+                        text_parts.append(page_text)
+            return " ".join(text_parts)
         except Exception as e:
-            # In case of any exception (e.g., file not found, read error), return the exception
-            raise e
+            print(f"Error reading PDF file '{file_path}': {e}")
+            return ""
 
 
-# =========================== TEXT CHUNKING UTILITY ============================
+# ========================== TEXT CHUNKING ============================
 
 class TextChunks:
     """
-    Handles splitting of text data into smaller, manageable chunks using RecursiveCharacterTextSplitter.
+    Handles splitting text into smaller chunks for LLM/embedding processing.
     """
-    text_splitter = None  # Class variable to hold the text splitter instance
+    text_splitter = None
 
     @classmethod
     def initialize(cls, separator=None, chunksize=None, overlap=None):
-        """
-        Initializes the text splitter with specified separator, chunk size, and overlap.
-        
-        Args:
-            separator (list): List of separators used to split text.
-            chunksize (int): Maximum size of each chunk.
-            overlap (int): Overlap size between consecutive chunks.
-        """
         try:
-            # Initialize RecursiveCharacterTextSplitter with provided parameters
             cls.text_splitter = RecursiveCharacterTextSplitter(
                 separators=separator,
                 chunk_size=chunksize,
                 chunk_overlap=overlap
             )
-            print("Text splitter initialized successfully.")
+            print(f"Text splitter initialized (chunk={chunksize}, overlap={overlap}, separators={separator})")
         except Exception as e:
             print(f"Failed to initialize text splitter: {e}")
-            cls.text_splitter = None  # Reset splitter on failure
+            cls.text_splitter = None
 
     @classmethod
     def get_text_chunks_doc(cls, text=None):
-        """
-        Splits the given text into document chunks (structured for LLM processing).
-        
-        Args:
-            text (str): Input text to split.
-        
-        Returns:
-            list: List of document chunks (as LangChain Documents).
-        """
-        if cls.text_splitter is None:
-            print("Text splitter is not initialized! Call initialize() first.")
-            return None
         try:
+            if cls.text_splitter is None:
+                print("Text splitter not initialized. Call initialize() first.")
+                return []
             return cls.text_splitter.create_documents([text])
         except Exception as e:
             print(f"Error creating document chunks: {e}")
-            return None
+            return []
 
-# =========================== VECTOR STORE UTILITY ============================
+
+# ========================== VECTOR STORE ============================
 
 class Vectors:
     """
-    Handles generation of vector embeddings from text or document chunks using a specified embedding model.
+    Handles generating vector embeddings and storing them in FAISS.
     """
-    embeddings = None  # Class variable to hold the embedding model instance
+    embeddings = None
 
     @classmethod
-    def initialize(cls, model_name):
+    def initialize(cls, config=None):
         """
-        Initializes the embedding model.
-        
-        Args:
-            model_name (str): Name or type of the embedding model.
+        Initializes the embedding model from the Gemini configuration.
         """
         try:
-            cls.embeddings = EmbeddingModel(model_name=model_name).embeddings
-            print(f"Embedding model initialized with {model_name}")
+            cls.embeddings = EmbeddingModel(config=config).embeddings
+            if cls.embeddings:
+                print(f"Embedding model loaded: {config.embedding_model_name}")
+            else:
+                print("Embedding model failed to load.")
         except Exception as e:
-            print(f"Failed to initialize embedding model: {e}")
-            cls.embeddings = None  # Reset embeddings on failure
+            print(f"Failed to initialize embeddings: {e}")
+            cls.embeddings = None
 
     @classmethod
     def generate_vectors_from_documents(cls, chunks=None):
         """
-        Generates vector embeddings from document chunks and stores them in FAISS.
-        
-        Args:
-            chunks (list): List of document chunks.
-        
-        Returns:
-            FAISS: FAISS vector store containing embeddings.
+        Generates FAISS vector store from document chunks.
         """
-        if cls.embeddings is None:
-            print("Embedding model is not initialized!")
-            return None
         try:
+            if cls.embeddings is None:
+                print("Embedding model not initialized.")
+                return None
+            if not chunks:
+                print("No chunks provided for vector generation.")
+                return None
             return FAISS.from_documents(chunks, embedding=cls.embeddings, normalize_L2=True)
         except Exception as e:
-            print(f"Error in generate_vectors_from_documents: {e}")
+            print(f"Error generating vectors: {e}")
             return None
 
-# =========================== TEXT PREPARATION CLASS ============================
+
+# ========================== PREPARE TEXT ============================
 
 class PrepareText:
     """
-    Prepares and processes text from files.
-    Handles reading, cleaning, chunking, and vectorization of text.
+    Reads, cleans, chunks, and vectorizes PDF text for Gemini QA pipeline.
     """
 
-    def __init__(self, dir_name):
-        """
-        Constructor to read text from a file (PDF).
+    def __init__(self, file_path: str, config=None, api_key: str = None):
+        try:
+            self.file_path = file_path
+            self.config = config
+            self.api_key = api_key
+            self.raw_text = ReadFile.read_pdf_file(file_path)
+            if self.raw_text:
+                print(f"Successfully read PDF: {file_path}")
+            else:
+                print(f"PDF is empty or could not be read: {file_path}")
+        except Exception as e:
+            print(f"Error initializing PrepareText: {e}")
+            self.raw_text = ""
 
-        Args:
-            dir_name (str): Path to the directory/file containing the document.
+    def clean_data(self) -> str:
         """
-        # Reading the raw text from PDF file using ReadFile class
-        self.file = ReadFile().read_pdf_files(dir_name)
-
-    def clean_data(self):
-        """
-        Cleans the raw text by converting to lowercase, removing punctuation and extra spaces.
-
-        Returns:
-            str: Cleaned text.
+        Cleans text for embeddings (lowercase, remove punctuation & noise).
         """
         try:
             return cleantext.clean(
-                self.file,
+                self.raw_text,
                 lowercase=True,
                 punct=True,
                 extra_spaces=True
             )
         except Exception as e:
-            raise e
+            print(f"Error cleaning data: {e}")
+            return self.raw_text
 
-    def get_chunks(self, separator=None, chunksize=None, overlap=None):
+    def get_chunks(self, separator=None, chunksize=1000, overlap=100):
         """
-        Splits cleaned text into document chunks.
-
-        Args:
-            separator (list): Separators to split text.
-            chunksize (int): Max size of each chunk.
-            overlap (int): Overlap between chunks.
-
-        Returns:
-            list: List of document chunks.
+        Splits cleaned text into structured document chunks.
         """
         try:
-            # Initialize TextChunks and split cleaned text into document chunks
             TextChunks.initialize(separator=separator, chunksize=chunksize, overlap=overlap)
-            return TextChunks.get_text_chunks_doc(text=self.clean_data())
+            chunks = TextChunks.get_text_chunks_doc(text=self.clean_data())
+            print(f"Created {len(chunks)} text chunks.")
+            return chunks
         except Exception as e:
-            raise e
+            print(f"Error creating chunks: {e}")
+            return []
 
-    def create_text_vectors(self, separator=None, chunksize=None, overlap=None, model=None):
+    def create_text_vectors(self, separator=None, chunksize=None, overlap=None):
         """
-        Generates vector embeddings from the document chunks.
-
-        Args:
-            separator (list): Separators to split text.
-            chunksize (int): Chunk size.
-            overlap (int): Overlap size.
-            model (str): Name of embedding model.
-
-        Returns:
-            FAISS: Vector store containing document embeddings.
+        Generates FAISS vector store for similarity search.
         """
         try:
-            # Initialize embedding model and create vectors from document chunks
-            Vectors.initialize(model_name=model)
-            return Vectors().generate_vectors_from_documents(
+            Vectors.initialize(config=self.config)
+            vectors = Vectors.generate_vectors_from_documents(
                 chunks=self.get_chunks(separator, chunksize, overlap)
             )
+            if vectors:
+                print("Vector store successfully created.")
+            else:
+                print("Vector store creation failed.")
+            return vectors
         except Exception as e:
-            raise e
+            print(f"Error creating vectors: {e}")
+            return None
+
+
 if __name__ == "__main__":
     pass

@@ -8,7 +8,7 @@ from TextProcessing import PrepareText  # your previous PrepareText implementati
 class QASystem(PrepareText, ChatGoogleGENAI):
     """Combines text preparation and ChatGoogleGENAI to create a QA system."""
 
-    def __init__(self, file_path: str, config: GeminiConfig,
+    def __init__(self, file_path: str, config=None,
                  separator=None, chunk_size=None, overlap=None):
         try:
             # Initialize both parents properly (no api_key passed here)
@@ -70,7 +70,7 @@ class QASystem(PrepareText, ChatGoogleGENAI):
 class QASystemGraphExecution(QASystem):
     """Builds a LangGraph execution graph to automate QA workflow."""
 
-    def __init__(self, file_path: str, config: GeminiConfig,
+    def __init__(self, file_path: str, config=None,
                  separator=None, chunk_size=None, overlap=None):
         try:
             super().__init__(file_path=file_path, config=config,
@@ -127,7 +127,7 @@ if __name__ == "__main__":
             api_key=api_key  # Set your key here or via environment variable
         )
 
-        file_path = "E:/Lang-Graph/RILAGM.pdf"
+        file_path = "E:/Lang-Graph/wings_of_fire.pdf"
 
         question = input("Ask your question here: ")
         prompt_type = input("Choose prompt type (key word extraction / chain of thoughts / verification prompt): ")

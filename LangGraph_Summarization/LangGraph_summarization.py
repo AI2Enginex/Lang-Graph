@@ -1,10 +1,7 @@
 from langgraph.graph import StateGraph
 from PromptClass import PromptTemplates
 from TextProcessing import PrepareText
-from GeminiConfigs import ChatGoogleGENAI, SimpleDocState, ReducedDocState
-
-
-
+from GeminiConfigs import GeminiConfig, ChatGoogleGENAI, SimpleDocState, ReducedDocState, api_key
 
 class StuffSummarizer(PrepareText,ChatGoogleGENAI):
     """
@@ -20,19 +17,18 @@ class StuffSummarizer(PrepareText,ChatGoogleGENAI):
     - PrepareText: For text reading, cleaning, chunking, and vector generation.
     """
 
-    def __init__(self, filename=None, delimiter=None, chunk=None, over_lap=None, model=None):
+    def __init__(self, filename=None, delimiter=None, chunk=None, over_lap=None, config=None):
         # initialize PrepareText with filename
-        PrepareText.__init__(self, dir_name=filename)
+        PrepareText.__init__(self, file_path=filename,config=config)
 
         # initialize ChatGoogleGENAI 
-        ChatGoogleGENAI.__init__(self)
+        ChatGoogleGENAI.__init__(self,config=config)
 
         # calling the preprocessed vectors
         self.vector_store = self.create_text_vectors(
             separator=delimiter,           
             chunksize=chunk, 
-            overlap=over_lap, 
-            model=model
+            overlap=over_lap
         )
     
     # function to retrieve the chunks
@@ -75,19 +71,18 @@ class MapReduceSummarizer(PrepareText,ChatGoogleGENAI):
     3. Combining partial summaries into a cohesive final summary (reduce step).
     """
 
-    def __init__(self, filename=None, delimiter=None, chunk=None, over_lap=None, model=None):
+    def __init__(self, filename=None, delimiter=None, chunk=None, over_lap=None, config=None):
         # initialize PrepareText with filename
-        PrepareText.__init__(self, dir_name=filename)
+        PrepareText.__init__(self, file_path=filename,config=config)
 
         # initialize ChatGoogleGENAI 
-        ChatGoogleGENAI.__init__(self)
+        ChatGoogleGENAI.__init__(self,config=config)
 
         # Create vector store by chunking and embedding the document
         self.vector_store = self.create_text_vectors(
             separator=delimiter,
             chunksize=chunk,
-            overlap=over_lap,
-            model=model
+            overlap=over_lap
         )
     
     # function to retrieve chunks
@@ -152,7 +147,7 @@ class MapReduceSummarizer(PrepareText,ChatGoogleGENAI):
 # creating a Graph Execuetion flow
 class StuffGraphExecuetion(StuffSummarizer):
 
-    def __init__(self, data=None, processing_delimiter=None, total_chunk=None, overlapping=None, embedding_model=None):
+    def __init__(self, data=None, processing_delimiter=None, total_chunk=None, overlapping=None,config=None):
         """
         Initializes the StuffGraphExecuetion class.
 
@@ -164,7 +159,7 @@ class StuffGraphExecuetion(StuffSummarizer):
         - embedding_model (str): Name of embedding model to use.
         """
         # Initialize the parent StuffSummarizer class with provided parameters
-        super().__init__(filename=data, delimiter=processing_delimiter, chunk=total_chunk, over_lap=overlapping, model=embedding_model)
+        super().__init__(filename=data, delimiter=processing_delimiter, chunk=total_chunk, over_lap=overlapping, config=config)
 
     def build_graph(self):
         """
@@ -233,7 +228,7 @@ class StuffGraphExecuetion(StuffSummarizer):
 # creating a Graph Execuetion flow
 class MapReduceGraphExecuetion(MapReduceSummarizer):
 
-    def __init__(self, data=None, processing_delimiter=None, total_chunk=None, overlapping=None, embedding_model=None):
+    def __init__(self, data=None, processing_delimiter=None, total_chunk=None, overlapping=None, config=None):
         """
         Initializes the MapReduceGraphExecuetion class.
 
@@ -245,7 +240,7 @@ class MapReduceGraphExecuetion(MapReduceSummarizer):
         - embedding_model (str): Name of embedding model to use.
         """
         # Initialize the parent MapReduceSummarizer class with provided parameters
-        super().__init__(filename=data, delimiter=processing_delimiter, chunk=total_chunk, over_lap=overlapping, model=embedding_model)
+        super().__init__(filename=data, delimiter=processing_delimiter, chunk=total_chunk, over_lap=overlapping, config=config)
     
     def build_graph(self):
         """
@@ -326,12 +321,12 @@ class SummarizerManager:
     Manages document summarization using different chain types.
     """
 
-    def __init__(self, file_path: str, separator, chunk_size: int, overlap: int, embedding_model: str):
+    def __init__(self, file_path: str, separator, chunk_size: int, overlap: int, config: None):
         self.file_path = file_path
         self.separator = separator
         self.chunk_size = chunk_size
         self.overlap = overlap
-        self.embedding_model = embedding_model
+        self.config = config
 
     def get_summarizer(self, chain_type: str):
         """
@@ -344,7 +339,7 @@ class SummarizerManager:
                     processing_delimiter=self.separator,
                     total_chunk=self.chunk_size,
                     overlapping=self.overlap,
-                    embedding_model=self.embedding_model
+                    config=config
                 )
             else:
                 return MapReduceGraphExecuetion(
@@ -352,7 +347,7 @@ class SummarizerManager:
                     processing_delimiter=self.separator,
                     total_chunk=self.chunk_size,
                     overlapping=self.overlap,
-                    embedding_model=self.embedding_model
+                    config=config
                 )
         except Exception as e:
             print(f"Error initializing summarizer for chain type '{chain_type}': {e}")
@@ -374,16 +369,28 @@ class SummarizerManager:
 # ========================== MAIN EXECUTION ==========================
 if __name__ == "__main__":
     try:
+
+        config = GeminiConfig(
+            chat_model_name="gemini-2.5-flash",
+            embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
+            temperature=0.0,
+            top_p=0.8,
+            top_k=32,
+            max_output_tokens=3500,
+            generation_max_tokens=8192,
+            api_key=api_key  # Set your key here or via environment variable
+        )
         # File path and parameters
-        file_path = "E:/Lang-Graph/RILAGM.pdf"
+        file_path = "E:/Lang-Graph/wings_of_fire.pdf"
         separator = ["\n\n", "\n", " ", ""]
-        chunk_size = 1500
+        chunk_size = 3500
         overlap = 100
-        embedding_model = "sentence-transformers/all-MiniLM-L6-v2"
 
         # User input
         chain_type = input("Enter chain type (simple / other): ")
         query = "Summarize this document briefly."
+
+
 
         # Initialize summarizer manager
         manager = SummarizerManager(
@@ -391,7 +398,7 @@ if __name__ == "__main__":
             separator=separator,
             chunk_size=chunk_size,
             overlap=overlap,
-            embedding_model=embedding_model
+            config=config
         )
 
         # Generate summary

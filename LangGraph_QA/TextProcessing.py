@@ -1,7 +1,7 @@
 from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from LLMConfigs import GeminiConfig, EmbeddingModel
+from LLMConfigs import  EmbeddingModel
 import cleantext
 
 
@@ -86,7 +86,7 @@ class Vectors:
     embeddings = None
 
     @classmethod
-    def initialize(cls, config: GeminiConfig):
+    def initialize(cls, config=None):
         """
         Initializes the embedding model from the Gemini configuration.
         """
@@ -125,7 +125,7 @@ class PrepareText:
     Reads, cleans, chunks, and vectorizes PDF text for Gemini QA pipeline.
     """
 
-    def __init__(self, file_path: str, config: GeminiConfig, api_key: str = None):
+    def __init__(self, file_path: str, config=None, api_key: str = None):
         try:
             self.file_path = file_path
             self.config = config

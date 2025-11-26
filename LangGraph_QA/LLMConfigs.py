@@ -6,7 +6,7 @@ import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI 
 import os
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key =  "AIzaSyC4m4mJdC4Meic3W6501FjdFX-giYFgE28"
+api_key =  "AIzaSyCgFHLtt5JwmXq5q176rtzvjtJo9ZxjqH0"
 os.environ['GOOGLE_API_KEY'] = api_key
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
