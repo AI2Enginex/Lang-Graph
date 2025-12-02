@@ -7,7 +7,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI 
 import os
-# Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
+# Loading the API key using lod_dotenv
 from dotenv import load_dotenv
 
 # Load variables from .env
@@ -67,6 +67,16 @@ class QAState(BaseModel):
     retrieved_chunks: List[str]
     answer: str
     prompt_type: str
+
+
+class SimpleDocState(TypedDict):
+    messages: Annotated[list, "add_messages"]  
+    document_chunks: list  
+                        
+class ReducedDocState(TypedDict):
+    messages: Annotated[list, "add_messages"]  
+    document_chunks: list                    
+    partial_summaries: list
 
 # ========================== GEMINI MODELS ============================
 

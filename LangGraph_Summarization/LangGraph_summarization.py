@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph
-from PromptClass import PromptTemplates
-from TextProcessing import PrepareText
-from GeminiConfigs import GeminiConfig, ChatGoogleGENAI, SimpleDocState, ReducedDocState, api_key
+from GeminiUtils.PromptClass import PromptTemplates
+from GeminiUtils.TextProcessing import PrepareText
+from GeminiUtils.LLMConfigs import GeminiConfig, ChatGoogleGENAI, SimpleDocState, ReducedDocState, api_key
 
 class StuffSummarizer(PrepareText,ChatGoogleGENAI):
     """
@@ -383,7 +383,7 @@ if __name__ == "__main__":
         # File path and parameters
         file_path = "E:/Lang-Graph/wings_of_fire.pdf"
         separator = ["\n\n", "\n", " ", ""]
-        chunk_size = 3500
+        chunk_size = 4500
         overlap = 100
 
         # User input

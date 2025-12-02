@@ -1,7 +1,7 @@
-from LLMConfigs import ChatGoogleGENAI, GeminiConfig, QAState, api_key
+from GeminiUtils.LLMConfigs import ChatGoogleGENAI, GeminiConfig, QAState, api_key
 from langgraph.graph import StateGraph
-from PromptClass import PromptManager
-from TextProcessing import PrepareText  # your previous PrepareText implementation
+from GeminiUtils.PromptClass import PromptManager
+from GeminiUtils.TextProcessing import PrepareText
 
 # ========================== QASYSTEM ============================
 
