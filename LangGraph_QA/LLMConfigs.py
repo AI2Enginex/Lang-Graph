@@ -1,16 +1,24 @@
 from pydantic import BaseModel
 from typing import List
+from typing import Annotated
 
+from typing_extensions import TypedDict
 from langchain_huggingface import HuggingFaceEmbeddings
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI 
 import os
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key =  "AIzaSyCgFHLtt5JwmXq5q176rtzvjtJo9ZxjqH0"
-os.environ['GOOGLE_API_KEY'] = api_key
+from dotenv import load_dotenv
+
+# Load variables from .env
+load_dotenv()
+
+# Loading the API key
+api_key = os.getenv("GOOGLE_API_KEY")
+
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
-key = os.environ.get('GOOGLE_API_KEY')
+
 
 
 # ========================== GEMINI CONFIG ============================
@@ -38,6 +46,18 @@ class GeminiConfig:
         self.max_output_tokens = max_output_tokens
         self.generation_max_tokens = generation_max_tokens
         self.api_key = api_key  # optional, for Gemini API calls
+
+
+# ===================== Document Summarization states =============
+
+class SimpleDocState(TypedDict):
+    messages: Annotated[list, "add_messages"]  
+    document_chunks: list  
+                        
+class ReducedDocState(TypedDict):
+    messages: Annotated[list, "add_messages"]  
+    document_chunks: list                    
+    partial_summaries: list
 
 # ========================== QA STATE ============================
 

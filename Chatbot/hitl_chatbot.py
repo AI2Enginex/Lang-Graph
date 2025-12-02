@@ -9,12 +9,17 @@ from langchain.output_parsers import PydanticOutputParser, CommaSeparatedListOut
 from langgraph.graph import StateGraph, END
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
-# Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = "xxxxxxxxxxxxxxxxx"
+from dotenv import load_dotenv
+
+# Load variables from .env
+load_dotenv()
+
+# Loading the API key
+api_key = os.getenv("GOOGLE_API_KEY")
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
-key = os.environ.get('GOOGLE_API_KEY')
+
 
 def clean_answer(text):
         """
@@ -47,7 +52,7 @@ class ChatGoogleGENAI:
     def __init__(self):
         
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
-        self.llm=ChatGoogleGenerativeAI(temperature=0.8,model="gemini-2.5-flash", google_api_key=key,top_p=1.0,
+        self.llm=ChatGoogleGenerativeAI(temperature=0.8,model="gemini-2.5-flash", google_api_key=api_key,top_p=1.0,
             top_k=32,
             candidate_count=1,
             max_output_tokens=3000)

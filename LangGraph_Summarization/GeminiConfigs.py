@@ -10,12 +10,18 @@ import google.generativeai as genai  # Importing the Google Generative AI module
 import os
 
 
-# Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key =  "AIzaSyCgFHLtt5JwmXq5q176rtzvjtJo9ZxjqH0"
-os.environ['GOOGLE_API_KEY'] = api_key
+from dotenv import load_dotenv
+
+# Load variables from .env
+load_dotenv()
+
+# Loading the API key
+api_key = os.getenv("GOOGLE_API_KEY")
+
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
-key = os.environ.get('GOOGLE_API_KEY')
+
+
 
 class GeminiConfig:
     """

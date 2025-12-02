@@ -1,5 +1,5 @@
 
-from langchain_core.prompts import PromptTemplate # pyright: ignore[reportMissingImports]
+from langchain_core.prompts import PromptTemplate
 
 class PromptTemplates:
     """
