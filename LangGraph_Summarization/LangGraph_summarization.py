@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph
-from GeminiUtils.PromptClass import PromptTemplates
-from GeminiUtils.TextProcessing import PrepareText
-from GeminiUtils.LLMConfigs import GeminiConfig, ChatGoogleGENAI, SimpleDocState, ReducedDocState, api_key
+from LLMUtils.PromptClass import PromptTemplates
+from LLMUtils.TextProcessing import PrepareText
+from LLMUtils.LLMConfigs import GeminiConfig, ChatGoogleGENAI, SimpleDocState, ReducedDocState, api_key
 
 class StuffSummarizer(PrepareText,ChatGoogleGENAI):
     """

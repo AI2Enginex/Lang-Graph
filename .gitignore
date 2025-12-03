@@ -1,10 +1,9 @@
 bookmark.py
 RILAGM.pdf
 TATAAGM.pdf
-data.txt
+LLMUtils/__pycache__/
+LLMbot/__pycache__/
 /SQLLLM/
 LangGraph_QA/__pycache__/
 LangGraph_Summarization/__pycache__/
-Chatbot/__pycache__/
 .env
-.gitignore

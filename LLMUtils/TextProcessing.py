@@ -1,7 +1,7 @@
 from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from GeminiUtils.LLMConfigs import  EmbeddingModel
+from LLMUtils.LLMConfigs import  EmbeddingModel
 import cleantext
 
 
@@ -13,7 +13,7 @@ class ReadFile:
     """
 
     @classmethod
-    def read_pdf_file(cls, file_path: str) -> str:
+    def read_pdf_file(cls, file_path: str):
         """
         Reads and extracts text content from a PDF file.
         Cleans basic layout noise (line breaks, hyphenation).
