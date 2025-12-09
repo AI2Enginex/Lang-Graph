@@ -30,12 +30,19 @@ class StuffSummarizer(PrepareText,ChatGoogleGENAI):
             chunksize=chunk, 
             overlap=over_lap
         )
+
+        # Create FAISS  as Retriever
+        self.retriever = None
+        if self.vector_store:
+                self.retriever = self.vector_store.as_retriever(
+                search_kwargs={"k": 6}
+            )
     
     # function to retrieve the chunks
     def retrieve_chunks(self, state: SimpleDocState):
         try:
             query = state["messages"][-1]
-            results = self.vector_store.similarity_search(query, k=3)
+            results = self.retriever.invoke(query)
             return {
                 "messages": state["messages"],
                 "document_chunks": results,  # Ensure chunks are strings
@@ -84,12 +91,19 @@ class MapReduceSummarizer(PrepareText,ChatGoogleGENAI):
             chunksize=chunk,
             overlap=over_lap
         )
+
+        # Create FAISS  as Retriever
+        self.retriever = None
+        if self.vector_store:
+                self.retriever = self.vector_store.as_retriever(
+                search_kwargs={"k": 6}
+            )
     
     # function to retrieve chunks
     def retrieve_chunks(self, state: ReducedDocState):
         try:
             query = state["messages"][-1]  # Last message is query string
-            results = self.vector_store.similarity_search(query, k=5)
+            results = self.retriever.invoke(query)
 
             return {
                 "messages": state["messages"],

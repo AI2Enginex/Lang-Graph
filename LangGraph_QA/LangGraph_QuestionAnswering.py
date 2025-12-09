@@ -21,6 +21,13 @@ class QASystem(PrepareText, ChatGoogleGENAI):
                 chunksize=chunk_size,
                 overlap=overlap
             )
+            
+            # Create FAISS  as Retriever
+            self.retriever = None
+            if self.vector_store:
+                self.retriever = self.vector_store.as_retriever(
+                search_kwargs={"k": 4}
+            )
 
             print("QASystem initialized successfully.")
 
@@ -34,7 +41,7 @@ class QASystem(PrepareText, ChatGoogleGENAI):
             if not self.vector_store:
                 print("Vector store not initialized!")
                 return state
-            docs = self.vector_store.similarity_search(state.question, k=4)
+            docs = self.retriever.invoke(state.question)
             state.retrieved_chunks = [doc.page_content for doc in docs]
             return state
         except Exception as e:
