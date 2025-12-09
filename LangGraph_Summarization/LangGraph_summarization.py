@@ -373,7 +373,7 @@ if __name__ == "__main__":
         config = GeminiConfig(
             chat_model_name="gemini-2.5-flash",
             embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
-            temperature=0.0,
+            temperature=0.1,
             top_p=0.8,
             top_k=32,
             max_output_tokens=3500,
@@ -383,7 +383,7 @@ if __name__ == "__main__":
         # File path and parameters
         file_path = "E:/Lang-Graph/wings_of_fire.pdf"
         separator = ["\n\n", "\n", " ", ""]
-        chunk_size = 4500
+        chunk_size = 3500
         overlap = 100
 
         # User input

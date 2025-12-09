@@ -69,14 +69,7 @@ class QAState(BaseModel):
     prompt_type: str
 
 
-class SimpleDocState(TypedDict):
-    messages: Annotated[list, "add_messages"]  
-    document_chunks: list  
-                        
-class ReducedDocState(TypedDict):
-    messages: Annotated[list, "add_messages"]  
-    document_chunks: list                    
-    partial_summaries: list
+
 
 # ========================== GEMINI MODELS ============================
 

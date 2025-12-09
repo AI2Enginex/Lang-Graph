@@ -161,6 +161,7 @@ class PrepareText:
         try:
             TextChunks.initialize(separator=separator, chunksize=chunksize, overlap=overlap)
             chunks = TextChunks.get_text_chunks_doc(text=self.clean_data())
+            print(chunks)
             print(f"Created {len(chunks)} text chunks.")
             return chunks
         except Exception as e:
