@@ -6,70 +6,180 @@ from LLMUtils.TextProcessing import PrepareText
 # ========================== QASYSTEM ============================
 
 class QASystem(PrepareText, ChatGoogleGENAI):
-    """Combines text preparation and ChatGoogleGENAI to create a QA system."""
+    """
+    Agentic RAG system:
+    - Agent decides what to do
+    - Tools perform retrieval / answering / verification
+    """
 
     def __init__(self, file_path: str, config=None,
                  separator=None, chunk_size=None, overlap=None):
+
         try:
-            # Initialize both parents properly (no api_key passed here)
-            PrepareText.__init__(self, file_path=file_path,config=config)
+            PrepareText.__init__(self, file_path=file_path, config=config)
             ChatGoogleGENAI.__init__(self, config=config)
 
-            # Create FAISS vector store from document
             self.vector_store = self.create_text_vectors(
                 separator=separator,
                 chunksize=chunk_size,
                 overlap=overlap
             )
-            
-            # Create FAISS  as Retriever
+
             self.retriever = None
             if self.vector_store:
                 self.retriever = self.vector_store.as_retriever(
-                search_kwargs={"k": 4}
-            )
+                    search_kwargs={"k": 4}
+                )
 
-            print("QASystem initialized successfully.")
+            print("Agentic QA System initialized")
 
         except Exception as e:
             print(f"Error initializing QASystem: {e}")
             self.vector_store = None
 
     def retrieve_chunks(self, state: QAState):
-        """Retrieve top-k document chunks relevant to the question."""
         try:
             if not self.vector_store:
                 print("Vector store not initialized!")
                 return state
-            docs = self.retriever.invoke(state.question)
-            state.retrieved_chunks = [doc.page_content for doc in docs]
-            return state
-        except Exception as e:
-            print(f"Error retrieving chunks: {e}")
+
+            docs = self.retriever.invoke(state["question"])
+            state["retrieved_chunks"] = [doc.page_content for doc in docs]
             return state
 
+        except Exception as e:
+            print(f"Error retrieving chunks: {e}")
+        return state
+
+
     def answer_questions(self, state: QAState):
-        """Answer the question based on retrieved chunks using selected prompt template."""
         try:
             if not self.llm:
                 print("LLM not initialized!")
                 return state
 
+            # Safety: ensure prompt_type exists
+            if not state.get("prompt_type"):
+                state["prompt_type"] = "key_word_extraction"
+
             prompt_manager = PromptManager()
-            prompt_template = prompt_manager.get_prompt(state.prompt_type)
+            prompt_template = prompt_manager.get_prompt(state["prompt_type"])
             if not prompt_template:
                 print("Prompt template not found!")
                 return state
 
-            context = "\n\n".join(state.retrieved_chunks)
-            prompt = prompt_template.format(context=context, question=state.question)
-            response = self.llm.invoke(prompt)
+            context = "\n\n".join(state["retrieved_chunks"])
+            prompt = prompt_template.format(
+                context=context,
+                question=state["question"]
+            )
 
-            state.answer = response.content if response else ""
+            response = self.llm.invoke(prompt)
+            state["answer"] = response.content if response else ""
+
             return state
+
         except Exception as e:
             print(f"Error answering question: {e}")
             return state
+    
+    def _normalize_llm_output(self, content):
+        """
+        Converts Gemini / LangChain response content into plain text.
+        Handles str, list[str], list[dict], and mixed cases.
+        """
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            texts = []
+            for item in content:
+                if isinstance(item, str):
+                    texts.append(item)
+                elif isinstance(item, dict):
+                    # Gemini often returns {"text": "..."}
+                    if "text" in item:
+                        texts.append(item["text"])
+                    else:
+                        texts.append(str(item))
+                else:
+                    texts.append(str(item))
+            return " ".join(texts)
+
+        return str(content)
+
+    
+    def verify_answer(self, state: QAState):
+        try:
+            prompt_manager = PromptManager()
+            prompt_template = prompt_manager.get_prompt("verification_prompt")
+
+            context = "\n\n".join(state["retrieved_chunks"])
+            prompt = prompt_template.format(
+                context=context,
+                question=state["question"]
+            )
+
+            response = self.llm.invoke(prompt)
+
+            # 🔒 Robust normalization
+            verification_text = self._normalize_llm_output(
+                response.content
+            ).lower()
+
+            if "not supported" in verification_text or "not found" in verification_text:
+                state["answer"] = (
+                    "The document does not provide sufficient evidence "
+                    "to answer this question."
+                )
+
+            return state
+
+        except Exception as e:
+            print(f"Error verifying answer: {e}")
+            return state
+
+            
+    def agent_think(self, state: QAState):
+        """
+        Agent decides:
+        - whether to retrieve
+        - which prompt to use for answering
+        - whether to verify
+        - when to stop
+        """
+
+        question = state["question"].lower()
+
+        # Need retrieval
+        if not state["retrieved_chunks"]:
+            state["next_action"] = "retrieve"
+            return state
+
+        # Need to answer
+        if not state["answer"]:
+            # ---- PROMPT SELECTION LOGIC ----
+            if any(word in question for word in [
+                "what is", "who is", "define", "list", "when", "where"
+            ]):
+                state["prompt_type"] = "key_word_extraction"
+            else:
+                state["prompt_type"] = "chain_of_thoughts"
+
+            state["next_action"] = "answer"
+            return state
+
+        # Verify once
+        if not state["verified"]:
+            state["next_action"] = "verify"
+            state["verified"] = True
+            return state
+
+        # Done
+        state["next_action"] = "end"
+        return state
+
+
 
 
 # ========================== GRAPH EXECUTION ============================
@@ -87,17 +197,37 @@ class QASystemGraphExecution(QASystem):
 
     def build_graph(self):
         try:
+           
             graph = StateGraph(QAState)
+
+            graph.add_node("agent", self.agent_think)
             graph.add_node("retrieve", self.retrieve_chunks)
-            graph.add_node("QA", self.answer_questions)
-            graph.add_edge("retrieve", "QA")
-            graph.set_entry_point("retrieve")
+            graph.add_node("answer_node", self.answer_questions)
+            graph.add_node("verify", self.verify_answer)
+
+            graph.set_entry_point("agent")
+
+            graph.add_conditional_edges(
+                "agent",
+                lambda state: state["next_action"],
+                {
+                    "retrieve": "retrieve",
+                    "answer": "answer_node",
+                    "verify": "verify",
+                    "end": "__end__"
+                }
+            )
+
+            graph.add_edge("retrieve", "agent")
+            graph.add_edge("answer_node", "agent")
+            graph.add_edge("verify", "agent")
+
             return graph
         except Exception as e:
             print(f"Error building graph: {e}")
             return None
 
-    def answer(self, question: str, prompt_type: str):
+    def answer(self, question: str):
         """Executes the graph to answer the question."""
         try:
             graph_executor = self.build_graph()
@@ -106,12 +236,13 @@ class QASystemGraphExecution(QASystem):
                 return None
 
             executor = graph_executor.compile()
-            initial_state = {
-                "question": question,
-                "retrieved_chunks": [],
-                "answer": "",
-                "prompt_type": prompt_type
-            }
+            initial_state: QAState = {
+            "question": question,
+            "retrieved_chunks": [],
+            "answer": "",
+            "prompt_type": None,
+            "next_action": None,
+             "verified": False }
             result = executor.invoke(initial_state)
             return result.get("answer", "")
         except Exception as e:
@@ -124,7 +255,7 @@ class QASystemGraphExecution(QASystem):
 if __name__ == "__main__":
     try:
         config = GeminiConfig(
-            chat_model_name="gemini-2.5-flash",
+            chat_model_name="gemini-3-flash-preview",
             embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
             temperature=0.0,
             top_p=0.8,
@@ -137,7 +268,6 @@ if __name__ == "__main__":
         file_path = "E:/Lang-Graph/wings_of_fire.pdf"
 
         question = input("Ask your question here: ")
-        prompt_type = input("Choose prompt type (key word extraction / chain of thoughts / verification prompt): ")
 
         qa_system = QASystemGraphExecution(
             file_path=file_path,
@@ -147,7 +277,7 @@ if __name__ == "__main__":
             overlap=300
         )
 
-        answer = qa_system.answer(question=question, prompt_type=prompt_type)
+        answer = qa_system.answer(question=question)
         print("\nQuestion:", question)
         print("Answer:", answer)
 

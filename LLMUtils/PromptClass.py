@@ -120,9 +120,9 @@ class PromptTemplates:
 class PromptManager:
     def __init__(self):
         self.prompt_dict = {
-            "key word extraction": PromptTemplates.key_word_extraction,
-            "chain of thoughts": PromptTemplates.chain_of_thoughts,
-            "verification prompt": PromptTemplates.verification_prompt
+            "key_word_extraction": PromptTemplates.key_word_extraction,
+            "chain_of_thoughts": PromptTemplates.chain_of_thoughts,
+            "verification_prompt": PromptTemplates.verification_prompt
         }
 
     def get_prompt(self, name):

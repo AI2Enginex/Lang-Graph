@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from typing import Annotated
 
 from typing_extensions import TypedDict
@@ -61,12 +61,13 @@ class ReducedDocState(TypedDict):
 
 # ========================== QA STATE ============================
 
-class QAState(BaseModel):
-    """Stores state for QA system."""
+class QAState(TypedDict):
     question: str
     retrieved_chunks: List[str]
     answer: str
-    prompt_type: str
+    prompt_type: Optional[str]
+    next_action: Optional[str]
+    verified: bool
 
 
 
