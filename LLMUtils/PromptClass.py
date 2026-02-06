@@ -17,12 +17,21 @@ class PromptTemplates:
     @classmethod
     def chain_of_thoughts(cls):
         prompt = """
-        You are a thoughtful assistant.
-        Here is the document content:
-        {context}
-        Question: {question}
-        Think step by step based ONLY on the provided content.
-        """
+            You are a thoughtful assistant.
+
+            Here is the document content:
+            {context}
+
+            Question: {question}
+
+            Carefully analyze the content and provide a clear, well-reasoned answer
+            based ONLY on the provided information.
+
+            Do NOT speculate or add information that is not supported by the text.
+            {context}
+            Question: {question}
+            Think step by step based ONLY on the provided content.
+            """
         return PromptTemplate(template=prompt.strip(), input_variables=["context", "question"])
 
     @classmethod

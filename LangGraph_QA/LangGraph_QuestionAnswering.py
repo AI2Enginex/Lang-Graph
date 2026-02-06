@@ -168,6 +168,7 @@ class QASystem(PrepareText, ChatGoogleGENAI):
 
             state["next_action"] = "answer"
             return state
+        print(f"[AGENT] Selected prompt type: {state['prompt_type']}")
 
         # Verify once
         if not state["verified"]:
