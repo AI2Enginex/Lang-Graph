@@ -367,7 +367,7 @@ class SummarizerManager:
             print(f"Error initializing summarizer for chain type '{chain_type}': {e}")
             return None
 
-    def summarize(self, chain_type: str, query: str) -> str:
+    def summarize(self, chain_type: str, query: str):
         """
         Summarize the document using the selected chain type.
         """

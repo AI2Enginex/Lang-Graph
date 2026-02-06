@@ -149,36 +149,39 @@ class QASystem(PrepareText, ChatGoogleGENAI):
         - when to stop
         """
 
-        question = state["question"].lower()
+        try:
+            question = state["question"].lower()
 
-        # Need retrieval
-        if not state["retrieved_chunks"]:
-            state["next_action"] = "retrieve"
+            # Need retrieval
+            if not state["retrieved_chunks"]:
+                state["next_action"] = "retrieve"
+                return state
+
+            # Need to answer
+            if not state["answer"]:
+                # ---- PROMPT SELECTION LOGIC ----
+                if any(word in question for word in [
+                    "what is", "who is", "define", "list", "when", "where"
+                ]):
+                    state["prompt_type"] = "key_word_extraction"
+                else:
+                    state["prompt_type"] = "chain_of_thoughts"
+
+                state["next_action"] = "answer"
+                return state
+            print(f"[AGENT] Selected prompt type: {state['prompt_type']}")
+
+            # Verify once
+            if not state["verified"]:
+                state["next_action"] = "verify"
+                state["verified"] = True
+                return state
+
+            # Done
+            state["next_action"] = "end"
             return state
-
-        # Need to answer
-        if not state["answer"]:
-            # ---- PROMPT SELECTION LOGIC ----
-            if any(word in question for word in [
-                "what is", "who is", "define", "list", "when", "where"
-            ]):
-                state["prompt_type"] = "key_word_extraction"
-            else:
-                state["prompt_type"] = "chain_of_thoughts"
-
-            state["next_action"] = "answer"
-            return state
-        print(f"[AGENT] Selected prompt type: {state['prompt_type']}")
-
-        # Verify once
-        if not state["verified"]:
-            state["next_action"] = "verify"
-            state["verified"] = True
-            return state
-
-        # Done
-        state["next_action"] = "end"
-        return state
+        except Exception as e:
+            return e
 
 
 
