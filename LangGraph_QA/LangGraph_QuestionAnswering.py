@@ -5,6 +5,7 @@ from LLMUtils.TextProcessing import PrepareText
 
 # ========================== QASYSTEM ============================
 
+# class to decide the behaviour of the agent
 class QASystem(PrepareText, ChatGoogleGENAI):
     """
     Agentic RAG system:
@@ -12,19 +13,24 @@ class QASystem(PrepareText, ChatGoogleGENAI):
     - Tools perform retrieval / answering / verification
     """
 
-    def __init__(self, file_path: str, config=None,
-                 separator=None, chunk_size=None, overlap=None):
+    def __init__(self, file_path: str, config=None, separator=None, chunk_size=None, overlap=None):
 
         try:
-            PrepareText.__init__(self, file_path=file_path, config=config)
-            ChatGoogleGENAI.__init__(self, config=config)
 
+            # Load document and embeddings
+            PrepareText.__init__(self, file_path=file_path, config=config)
+
+            # initialize ChatGoogleGENAI 
+            ChatGoogleGENAI.__init__(self, config=config)
+            
+            # calling the preprocessed vectors
             self.vector_store = self.create_text_vectors(
                 separator=separator,
                 chunksize=chunk_size,
                 overlap=overlap
             )
-
+            
+            # create FAISS as Retriever
             self.retriever = None
             if self.vector_store:
                 self.retriever = self.vector_store.as_retriever(
@@ -83,9 +89,9 @@ class QASystem(PrepareText, ChatGoogleGENAI):
             print(f"Error answering question: {e}")
             return state
     
-    def _normalize_llm_output(self, content):
+    def normalize_llm_output(self, content):
         """
-        Converts Gemini / LangChain response content into plain text.
+        Converts Gemini response content into plain text.
         Handles str, list[str], list[dict], and mixed cases.
         """
         if isinstance(content, str):
@@ -122,8 +128,8 @@ class QASystem(PrepareText, ChatGoogleGENAI):
 
             response = self.llm.invoke(prompt)
 
-            # 🔒 Robust normalization
-            verification_text = self._normalize_llm_output(
+            # normalization
+            verification_text = self.normalize_llm_output(
                 response.content
             ).lower()
 
@@ -159,7 +165,7 @@ class QASystem(PrepareText, ChatGoogleGENAI):
 
             # Need to answer
             if not state["answer"]:
-                # ---- PROMPT SELECTION LOGIC ----
+                # PROMPT SELECTION LOGIC
                 if any(word in question for word in [
                     "what is", "who is", "define", "list", "when", "where"
                 ]):

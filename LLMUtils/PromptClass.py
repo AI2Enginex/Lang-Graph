@@ -116,6 +116,7 @@ class PromptTemplates:
             You are provided with multiple chunk-level summaries of a PDF document.
             Combine these summaries into a clear, cohesive final summary.
             Do not repeat points; focus on merging and refining.
+            Also avoid Providing summary in bullet points.
 
             Partial Summaries:
             {context}
@@ -125,7 +126,39 @@ class PromptTemplates:
             return PromptTemplate(template=reduce_template.strip(), input_variables=["context"])
         except Exception as e:
             raise e
+        
+    @classmethod
+    def reflect_prompt_template(cls,summary: str):
 
+        try:
+            prompt = f"""
+                Is the following summary complete and concise?
+                Answer with YES or NO only.
+
+                Summary:
+                {summary}
+                """
+            return prompt
+        except Exception as e:
+            return e
+    
+    @classmethod
+    def refine_prompt_template(cls, summary: str):
+
+        try:
+            prompt = f"""
+                Improve the following summary without increasing its length.
+                Do not add new sections or repeat headings.
+
+                Summary:
+                {summary}
+                """
+            return prompt
+        except Exception as e:
+            return e
+    
+
+        
 class PromptManager:
     def __init__(self):
         self.prompt_dict = {

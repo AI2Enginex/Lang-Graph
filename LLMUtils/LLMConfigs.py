@@ -50,14 +50,17 @@ class GeminiConfig:
 
 # ===================== Document Summarization states =============
 
-class SimpleDocState(TypedDict):
-    messages: Annotated[list, "add_messages"]  
-    document_chunks: list  
-                        
-class ReducedDocState(TypedDict):
-    messages: Annotated[list, "add_messages"]  
-    document_chunks: list                    
+
+
+# Agent to decide the flow 
+class AgentDocState(TypedDict):
+    messages: Annotated[list, "add_messages"]
+    document_chunks: list
     partial_summaries: list
+    strategy: str              
+    needs_refinement: bool
+    reasoning: str
+
 
 # ========================== QA STATE ============================
 
