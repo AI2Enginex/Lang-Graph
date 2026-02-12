@@ -27,6 +27,8 @@ class PromptTemplates:
             Carefully analyze the content and provide a clear, well-reasoned answer
             based ONLY on the provided information.
 
+            Avoid Using any Bullet points.
+
             Do NOT speculate or add information that is not supported by the text.
             {context}
             Question: {question}
@@ -156,9 +158,7 @@ class PromptTemplates:
             return prompt
         except Exception as e:
             return e
-    
-
-        
+            
 class PromptManager:
     def __init__(self):
         self.prompt_dict = {

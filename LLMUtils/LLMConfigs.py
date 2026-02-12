@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from typing import Annotated
-
+import pandas as pd
 from typing_extensions import TypedDict
 from langchain_huggingface import HuggingFaceEmbeddings
 import google.generativeai as genai
@@ -49,9 +49,6 @@ class GeminiConfig:
 
 
 # ===================== Document Summarization states =============
-
-
-
 # Agent to decide the flow 
 class AgentDocState(TypedDict):
     messages: Annotated[list, "add_messages"]
@@ -72,8 +69,15 @@ class QAState(TypedDict):
     next_action: Optional[str]
     verified: bool
 
-
-
+# ========================== Excel Processing State ============================
+class ExcelAgentState(TypedDict, total=False):
+    question: str
+    dataframe: pd.DataFrame
+    documents: List[str]
+    retrieved_docs: str
+    intent: str
+    tool_output: str
+    final_answer: str
 
 # ========================== GEMINI MODELS ============================
 
