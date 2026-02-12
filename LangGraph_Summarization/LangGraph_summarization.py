@@ -221,7 +221,7 @@ class AgenticSummarizer(StuffSummarizer, MapReduceSummarizer):
         try:
 
             # The generated Summary is again passed to LLM
-            # to check whether the generated summary needs refinement
+            # to check whether the summary needs refinement
             summary = state["messages"][-1]
 
             prompt = PromptTemplates.reflect_prompt_template(summary=summary)
@@ -394,7 +394,7 @@ if __name__ == "__main__":
 
  
         # File & Chunking Parameters
-        file_path = "E:/Lang-Graph/wings_of_fire.pdf"
+        file_path = "E:/Lang-Graph/Veritas.pdf"
         separator = ["\n\n", "\n", " ", ""]
         chunk_size = 3500
         overlap = 100

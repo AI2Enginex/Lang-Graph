@@ -56,7 +56,35 @@ class QASystem(PrepareText, ChatGoogleGENAI):
         except Exception as e:
             print(f"Error retrieving chunks: {e}")
         return state
+    
 
+    # method to normalize
+    # the LLM output
+    def normalize_llm_output(self, content):
+        """
+        Converts Gemini response content into plain text.
+        Handles str, list[str], list[dict], and mixed cases.
+        """
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            texts = []
+            for item in content:
+                if isinstance(item, str):
+                    texts.append(item)
+                elif isinstance(item, dict):
+                    
+                    if "text" in item:
+                        texts.append(item["text"])
+                    else:
+                        texts.append(str(item))
+                else:
+                    texts.append(str(item))
+            return " ".join(texts)
+
+        return str(content)
+    
 
     def answer_questions(self, state: QAState):
         try:
@@ -64,7 +92,7 @@ class QASystem(PrepareText, ChatGoogleGENAI):
                 print("LLM not initialized!")
                 return state
 
-            # Safety: ensure prompt_type exists
+            # ensure prompt_type exists
             if not state.get("prompt_type"):
                 state["prompt_type"] = "key_word_extraction"
 
@@ -81,7 +109,13 @@ class QASystem(PrepareText, ChatGoogleGENAI):
             )
 
             response = self.llm.invoke(prompt)
-            state["answer"] = response.content if response else ""
+            
+            # normalizing the LLM response
+            if response:
+                state["answer"] = self.normalize_llm_output(response.content)
+            else:
+                state["answer"] = ""
+
 
             return state
 
@@ -89,31 +123,6 @@ class QASystem(PrepareText, ChatGoogleGENAI):
             print(f"Error answering question: {e}")
             return state
     
-    def normalize_llm_output(self, content):
-        """
-        Converts Gemini response content into plain text.
-        Handles str, list[str], list[dict], and mixed cases.
-        """
-        if isinstance(content, str):
-            return content
-
-        if isinstance(content, list):
-            texts = []
-            for item in content:
-                if isinstance(item, str):
-                    texts.append(item)
-                elif isinstance(item, dict):
-                    # Gemini often returns {"text": "..."}
-                    if "text" in item:
-                        texts.append(item["text"])
-                    else:
-                        texts.append(str(item))
-                else:
-                    texts.append(str(item))
-            return " ".join(texts)
-
-        return str(content)
-
     
     def verify_answer(self, state: QAState):
         try:
@@ -275,7 +284,7 @@ if __name__ == "__main__":
             api_key=api_key  # Set your key here or via environment variable
         )
 
-        file_path = "E:/Lang-Graph/wings_of_fire.pdf"
+        file_path = "E:/Lang-Graph/Book.pdf"
 
         question = input("Ask your question here: ")
 

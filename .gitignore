@@ -6,4 +6,7 @@ LLMbot/__pycache__/
 /SQLLLM/
 LangGraph_QA/__pycache__/
 LangGraph_Summarization/__pycache__/
+ExcelDataProcessing/__pycache__/
+excel_data_file.xls
+Book.pdf
 .env
