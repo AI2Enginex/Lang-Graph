@@ -1,6 +1,8 @@
 from PyPDF2 import PdfReader
 from textwrap import dedent
+import re
 import pandas as pd
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from LLMUtils.LLMConfigs import  EmbeddingModel
@@ -44,6 +46,30 @@ class ReadFile:
         except Exception as e:
             print(f"Error reading PDF file '{file_path}': {e}")
             return ""
+        
+    @classmethod
+    def read_pdf_pages(cls, file_path: str):
+        """
+        Reads PDF page-wise and preserves page numbers.
+        """
+        try:
+            reader = PdfReader(file_path)
+            pages = []
+
+            for i, page in enumerate(reader.pages):
+                text = page.extract_text()
+                if text:
+                    pages.append({
+                        "page_number": i + 1,
+                        "text": text
+                    })
+
+            print(f"Loaded {len(pages)} pages.")
+            return pages
+
+        except Exception as e:
+            print(f"Error reading PDF file '{file_path}': {e}")
+            return []
 
 # Class for Reading Data from
 # an Excel Sheets and creating 
@@ -86,20 +112,11 @@ class TextChunks:
                 chunk_overlap=overlap
             )
             print(f"Text splitter initialized (chunk={chunksize}, overlap={overlap}, separators={separator})")
+            return cls.text_splitter
         except Exception as e:
             print(f"Failed to initialize text splitter: {e}")
             cls.text_splitter = None
 
-    @classmethod
-    def get_text_chunks_doc(cls, text=None):
-        try:
-            if cls.text_splitter is None:
-                print("Text splitter not initialized. Call initialize() first.")
-                return []
-            return cls.text_splitter.create_documents([text])
-        except Exception as e:
-            print(f"Error creating document chunks: {e}")
-            return []
 
 
 # ========================== VECTOR STORE ============================
@@ -143,11 +160,13 @@ class Vectors:
             return None
 
 
+
+
 # ========================== PREPARE TEXT ============================
 
 class PrepareText:
     """
-    Reads, cleans, chunks, and vectorizes PDF text for Gemini QA pipeline.
+    Reads, cleans, chunks, and vectorizes PDF text with metadata.
     """
 
     def __init__(self, file_path: str, config=None, api_key: str = None):
@@ -155,61 +174,128 @@ class PrepareText:
             self.file_path = file_path
             self.config = config
             self.api_key = api_key
-            self.raw_text = ReadFile.read_pdf_file(file_path)
-            if self.raw_text:
+
+            # Page-wise loading
+            self.pages = ReadFile.read_pdf_pages(file_path=file_path)
+
+            if self.pages:
                 print(f"Successfully read PDF: {file_path}")
             else:
-                print(f"PDF is empty or could not be read: {file_path}")
+                print(f"PDF is empty or unreadable: {file_path}")
+
         except Exception as e:
             print(f"Error initializing PrepareText: {e}")
-            self.raw_text = ""
+            self.pages = []
 
-    def clean_data(self) -> str:
-        """
-        Cleans text for embeddings (lowercase, remove punctuation & noise).
-        """
+    def clean_data(self, text):
         try:
             return cleantext.clean(
-                self.raw_text,
-                lowercase=True,
-                punct=True,
+                text,
+                lowercase=False,
+                punct=False,
                 extra_spaces=True
             )
         except Exception as e:
-            print(f"Error cleaning data: {e}")
-            return self.raw_text
+            print(f"Error cleaning text: {e}")
+            return text
 
-    def get_chunks(self, separator=None, chunksize=1000, overlap=100):
-        """
-        Splits cleaned text into structured document chunks.
-        """
+    def detect_section(self, text):
+        
         try:
-            TextChunks.initialize(separator=separator, chunksize=chunksize, overlap=overlap)
-            chunks = TextChunks.get_text_chunks_doc(text=self.clean_data())
-            print(chunks)
-            print(f"Created {len(chunks)} text chunks.")
-            return chunks
+            
+            """
+            Extracts all possible section headings from a page.
+            Returns list of detected headings in order.
+            """
+            section_patterns = [
+                r'^\d+\.?\s+[A-Z][A-Z0-9\s\-\(\)&]+$',
+                r'^Clause\s+\d+.*',            
+                r'^[A-Z][A-Z0-9\s\-\(\)&]{5,}$'
+            ]
+
+            sections = []
+            lines = text.split("\n")
+
+            for line in lines:
+                line = line.strip()
+
+                for pattern in section_patterns:
+                    if re.match(pattern, line):
+                        sections.append(line)
+                        break
+
+            return sections
         except Exception as e:
-            print(f"Error creating chunks: {e}")
-            return []
+            return e
+
+    def get_chunks(self, chunk_size=1200, overlap=200, separator=None):
+        
+        try:
+            splitter = TextChunks.initialize(separator=separator, chunksize=chunk_size, overlap=overlap)
+
+            final_docs = []
+
+            for page in self.pages:
+
+                page_text = page.get("text", "")
+                if not page_text:
+                    continue
+
+                cleaned_text = self.clean_data(page_text)
+                section = self.detect_section(page_text)
+
+                splits = splitter.split_text(cleaned_text)
+
+                for j, chunk in enumerate(splits):
+
+                    metadata = {
+                        "page": page["page_number"],
+                        "source": self.file_path,
+                        "section": section,
+                        "chunk_id": f"{self.file_path}_p{page['page_number']}_c{j}"
+                    }
+
+                    final_docs.append(
+                        Document(
+                            page_content=chunk,
+                            metadata=metadata
+                        )
+                    )
+
+            print(f"Created {len(final_docs)} chunks with metadata.")
+            
+            return final_docs
+        except Exception as e:
+            return e
 
     def create_text_vectors(self, separator=None, chunksize=1000, overlap=100):
-        """
-        Generates FAISS vector store for similarity search.
-        """
+
         try:
             Vectors.initialize(config=self.config)
-            vectors = Vectors.generate_vectors_from_documents(
-                chunks=self.get_chunks(separator, chunksize, overlap)
+
+            chunks = self.get_chunks(
+                chunk_size=chunksize,
+                overlap=overlap,
+                separator=separator
             )
+
+            print("Creating Vector Chunks")
+
+            for doc in chunks:print(doc.metadata)
+
+            vectors = Vectors.generate_vectors_from_documents(chunks=chunks)
+
             if vectors:
                 print("Vector store successfully created.")
             else:
                 print("Vector store creation failed.")
+
             return vectors
+
         except Exception as e:
             print(f"Error creating vectors: {e}")
             return None
+
 
 
 
@@ -355,4 +441,21 @@ class PrepareExcel:
             return None
 
 if __name__ == "__main__":
-    pass
+
+    from LLMUtils.LLMConfigs import ChatGoogleGENAI, GeminiConfig, QAState, api_key
+    
+    config = GeminiConfig(
+            chat_model_name="gemini-3-flash-preview",
+            embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
+            temperature=0,
+            top_p=0.8,
+            top_k=32,
+            max_output_tokens=3000,
+            generation_max_tokens=8192,
+            api_key=api_key  # Set your key here or via environment variable
+        )
+
+    file_path = "E:/Lang-Graph/Book.pdf"
+    text = PrepareText(file_path=file_path, config=config,api_key=api_key)
+    data = text.create_text_vectors(chunksize=1200, overlap=250, separator=["\n\n", "\n", " ", ""])
+    print(data)

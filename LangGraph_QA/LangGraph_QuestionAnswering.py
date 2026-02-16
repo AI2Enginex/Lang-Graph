@@ -34,7 +34,7 @@ class QASystem(PrepareText, ChatGoogleGENAI):
             self.retriever = None
             if self.vector_store:
                 self.retriever = self.vector_store.as_retriever(
-                    search_kwargs={"k": 4}
+                    search_kwargs={"k": 40}
                 )
 
             print("Agentic QA System initialized")
@@ -276,7 +276,7 @@ if __name__ == "__main__":
         config = GeminiConfig(
             chat_model_name="gemini-3-flash-preview",
             embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
-            temperature=0.0,
+            temperature=0,
             top_p=0.8,
             top_k=32,
             max_output_tokens=3000,
@@ -292,8 +292,8 @@ if __name__ == "__main__":
             file_path=file_path,
             config=config,
             separator=["\n\n", "\n", " ", ""],
-            chunk_size=4000,
-            overlap=300
+            chunk_size=1000,
+            overlap=200
         )
 
         answer = qa_system.answer(question=question)

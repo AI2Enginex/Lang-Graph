@@ -24,10 +24,8 @@ class PromptTemplates:
 
             Question: {question}
 
-            Carefully analyze the content and provide a clear, well-reasoned answer
-            based ONLY on the provided information.
-
-            Avoid Using any Bullet points.
+            Carefully analyze the content and provide a clear, well-reasoned answer based ONLY on the provided information.
+            Make sure you cover all the points and no information is missed/
 
             Do NOT speculate or add information that is not supported by the text.
             {context}
