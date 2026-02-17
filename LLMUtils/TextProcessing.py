@@ -1,4 +1,4 @@
-from PyPDF2 import PdfReader
+from LLMUtils.ReadData import ReadFile, ReadExcel
 from textwrap import dedent
 import re
 import pandas as pd
@@ -8,92 +8,6 @@ from langchain_community.vectorstores import FAISS
 from LLMUtils.LLMConfigs import  EmbeddingModel
 import cleantext
 
-
-# ========================== FILE UTILITIES ============================
-
-class ReadFile:
-    """
-    Utility to read text from PDFs or plain text files.
-    """
-
-    @classmethod
-    def read_pdf_file(cls, file_path: str):
-        """
-        Reads and extracts text content from a PDF file.
-        Cleans basic layout noise (line breaks, hyphenation).
-
-        Args:
-            file_path (str): Path to the PDF file.
-
-        Returns:
-            str: Combined text from all pages.
-        """
-        try:
-            text_parts = []
-            with open(file_path, "rb") as file:
-                reader = PdfReader(file)
-                for page in reader.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        page_text = (
-                            page_text.replace("-\n", "")
-                            .replace("\n", " ")
-                            .replace("\t", " ")
-                        )
-                        page_text = " ".join(page_text.split())
-                        text_parts.append(page_text)
-            return " ".join(text_parts)
-        except Exception as e:
-            print(f"Error reading PDF file '{file_path}': {e}")
-            return ""
-        
-    @classmethod
-    def read_pdf_pages(cls, file_path: str):
-        """
-        Reads PDF page-wise and preserves page numbers.
-        """
-        try:
-            reader = PdfReader(file_path)
-            pages = []
-
-            for i, page in enumerate(reader.pages):
-                text = page.extract_text()
-                if text:
-                    pages.append({
-                        "page_number": i + 1,
-                        "text": text
-                    })
-
-            print(f"Loaded {len(pages)} pages.")
-            return pages
-
-        except Exception as e:
-            print(f"Error reading PDF file '{file_path}': {e}")
-            return []
-
-# Class for Reading Data from
-# an Excel Sheets and creating 
-# VectoreStores
-class ReadExcel:
-    """
-    Utility class for processing Excel files
-    """
-
-    def extract_text_columns(state):
-        try:
-            df = state["dataframe"]
-
-            text_columns = df.select_dtypes(include=["object"]).columns
-
-            documents = []
-            for col in text_columns:
-                documents.extend(df[col].dropna().astype(str).tolist())
-
-            state["documents"] = documents
-            return state
-        
-        except Exception as e:
-            return e
 
 # ========================== TEXT CHUNKING ============================
 
@@ -314,16 +228,10 @@ class PrepareExcel:
             self.config = config
             self.api_key = api_key
 
-            # Load all sheets
-            if file_path.endswith(".xls"):
-                self.sheets = pd.read_excel(file_path, sheet_name=None, engine="xlrd")
-            else:
-                self.sheets = pd.read_excel(file_path, sheet_name=None, engine="openpyxl")
+            self.sheets = ReadExcel.read_excel_files(file=file_path)
 
-            if self.sheets:
-                print(f"Successfully read Excel file with {len(self.sheets)} sheets: {file_path}")
-            else:
-                print(f"Excel file is empty: {file_path}")
+            print("======Generated Sheets========")
+            print(self.sheets)
 
             # Convert all sheets into one structured string
             self.raw_text = self.convert_excel_to_text()
@@ -400,15 +308,14 @@ class PrepareExcel:
         Splits cleaned Excel text into document chunks.
         """
         try:
-            TextChunks.initialize(
+            splitter = TextChunks.initialize(
                 separator=separator,
                 chunksize=chunksize,
                 overlap=overlap
             )
 
-            chunks = TextChunks.get_text_chunks_doc(
-                text=self.clean_data()
-            )
+            chunks = splitter.create_documents([self.clean_data()])
+
 
             print(f"Created {len(chunks)} Excel text chunks.")
             print(chunks)
@@ -443,20 +350,4 @@ class PrepareExcel:
 
 if __name__ == "__main__":
 
-    from LLMUtils.LLMConfigs import ChatGoogleGENAI, GeminiConfig, QAState, api_key
-    
-    config = GeminiConfig(
-            chat_model_name="gemini-3-flash-preview",
-            embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
-            temperature=0,
-            top_p=0.8,
-            top_k=32,
-            max_output_tokens=3000,
-            generation_max_tokens=8192,
-            api_key=api_key  # Set your key here or via environment variable
-        )
-
-    file_path = "E:/Lang-Graph/Book.pdf"
-    text = PrepareText(file_path=file_path, config=config,api_key=api_key)
-    data = text.create_text_vectors(chunksize=1200, overlap=250, separator=["\n\n", "\n", " ", ""])
-    print(data)
+    pass
