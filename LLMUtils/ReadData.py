@@ -48,7 +48,7 @@ class ReadFile:
             file_path (str): Path to the PDF file.
 
         Returns:
-            list: return a list of dictionaries with page number and text.
+            list: return a list of dictionaries containing page number and text.
         """
         try:
             reader = PdfReader(file_path)
