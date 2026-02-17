@@ -208,6 +208,7 @@ class PrepareText:
             Returns list of detected headings in order.
             """
             section_patterns = [
+                r'^\d+(\.\d+)+\s+[A-Z][A-Z0-9\s\-\(\)&]+$',
                 r'^\d+\.?\s+[A-Z][A-Z0-9\s\-\(\)&]+$',
                 r'^Clause\s+\d+.*',            
                 r'^[A-Z][A-Z0-9\s\-\(\)&]{5,}$'
