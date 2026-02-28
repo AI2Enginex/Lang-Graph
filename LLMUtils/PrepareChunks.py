@@ -2,6 +2,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # ========================== TEXT CHUNKING ============================
 
+
+# utility class that returns
+# text-splitter object
 class TextChunks:
     """
     Handles splitting text into smaller chunks for LLM/embedding processing.

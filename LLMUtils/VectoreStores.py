@@ -3,6 +3,9 @@ from LLMUtils.LLMConfigs import  EmbeddingModel
 
 # ========================== VECTOR STORE ============================
 
+
+# Utility class for generating 
+# the vector Embeddings
 class Vectors:
     """
     Handles generating vector embeddings and storing them in FAISS.

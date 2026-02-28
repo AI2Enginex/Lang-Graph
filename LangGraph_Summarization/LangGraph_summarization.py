@@ -394,10 +394,10 @@ if __name__ == "__main__":
 
  
         # File & Chunking Parameters
-        file_path = "E:/Lang-Graph/Veritas.pdf"
+        file_path = "E:/Lang-Graph/wings_of_fire.pdf"
         separator = ["\n\n", "\n", " ", ""]
-        chunk_size = 3500
-        overlap = 100
+        chunk_size = 1500
+        overlap = 350
 
 
         # User Query

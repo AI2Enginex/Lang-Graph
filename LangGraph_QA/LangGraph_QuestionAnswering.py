@@ -18,7 +18,7 @@ class QASystem(PrepareText, ChatGoogleGENAI):
         try:
 
             # Load document and embeddings
-            PrepareText.__init__(self, file_path=file_path, config=config)
+            PrepareText.__init__(self, file_paths=file_path, config=config)
 
             # initialize ChatGoogleGENAI 
             ChatGoogleGENAI.__init__(self, config=config)
@@ -34,7 +34,7 @@ class QASystem(PrepareText, ChatGoogleGENAI):
             self.retriever = None
             if self.vector_store:
                 self.retriever = self.vector_store.as_retriever(
-                    search_kwargs={"k": 40}
+                    search_kwargs={"k": 100}
                 )
 
             print("Agentic QA System initialized")
@@ -279,12 +279,12 @@ if __name__ == "__main__":
             temperature=0,
             top_p=0.8,
             top_k=32,
-            max_output_tokens=3000,
+            max_output_tokens=6000,
             generation_max_tokens=8192,
             api_key=api_key  # Set your key here or via environment variable
         )
 
-        file_path = "E:/Lang-Graph/Book.pdf"
+        file_path = ["E:/Lang-Graph/Book.pdf", "E:/Lang-Graph/data.pdf"]
 
         question = input("Ask your question here: ")
 
@@ -292,8 +292,8 @@ if __name__ == "__main__":
             file_path=file_path,
             config=config,
             separator=["\n\n", "\n", " ", ""],
-            chunk_size=1000,
-            overlap=200
+            chunk_size=2500,
+            overlap=250
         )
 
         answer = qa_system.answer(question=question)

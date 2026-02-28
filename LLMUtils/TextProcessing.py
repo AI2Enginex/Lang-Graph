@@ -1,5 +1,6 @@
 from LLMUtils.ReadData import ReadFile, ReadExcel
 import re
+import os
 import pandas as pd
 from langchain_core.documents import Document
 from LLMUtils.PrepareChunks import TextChunks
@@ -10,26 +11,32 @@ import cleantext
 
 class PrepareText:
     """
-    Reads, cleans, chunks, and vectorizes PDF text with metadata.
+    Reads, cleans, chunks, and vectorizes MULTIPLE PDF files
+    with section detection metadata.
     """
 
-    def __init__(self, file_path: str, config=None, api_key: str = None):
+    def __init__(self, file_paths, config=None, api_key: str = None):
         try:
-            self.file_path = file_path
+            if isinstance(file_paths, str):
+                file_paths = [file_paths]
+
+            self.file_paths = file_paths
             self.config = config
             self.api_key = api_key
 
-            # Page-wise loading
-            self.pages = ReadFile.read_pdf_pages(file_path=file_path)
+            self.all_pages = []
 
-            if self.pages:
-                print(f"Successfully read PDF: {file_path}")
-            else:
-                print(f"PDF is empty or unreadable: {file_path}")
+            for file_path in self.file_paths:
+                pages = ReadFile.read_pdf_pages(file_path=file_path)
+                for page in pages:
+                    page["source"] = file_path
+                self.all_pages.extend(pages)
+
+            print(f"Total pages loaded from all PDFs: {len(self.all_pages)}")
 
         except Exception as e:
             print(f"Error initializing PrepareText: {e}")
-            self.pages = []
+            self.all_pages = []
 
     def clean_data(self, text):
         try:
@@ -39,22 +46,19 @@ class PrepareText:
                 punct=False,
                 extra_spaces=True
             )
-        except Exception as e:
-            print(f"Error cleaning text: {e}")
+        except Exception:
             return text
 
     def detect_section(self, text):
-        
+        """
+        Extracts all possible section headings from a page.
+        Returns list of detected headings in order.
+        """
         try:
-            
-            """
-            Extracts all possible section headings from a page.
-            Returns list of detected headings in order.
-            """
             section_patterns = [
                 r'^\d+(\.\d+)+\s+[A-Z][A-Z0-9\s\-\(\)&]+$',
                 r'^\d+\.?\s+[A-Z][A-Z0-9\s\-\(\)&]+$',
-                r'^Clause\s+\d+.*',            
+                r'^Clause\s+\d+.*',
                 r'^[A-Z][A-Z0-9\s\-\(\)&]{5,}$'
             ]
 
@@ -69,77 +73,69 @@ class PrepareText:
                         sections.append(line)
                         break
 
-            return sections
+            return sections if sections else None
+
         except Exception as e:
-            return e
+            print(f"Error detecting section: {e}")
+            return None
 
     def get_chunks(self, chunk_size=1200, overlap=200, separator=None):
-        
-        try:
-            splitter = TextChunks.initialize(separator=separator, chunksize=chunk_size, overlap=overlap)
 
-            final_docs = []
+        splitter = TextChunks.initialize(
+            separator=separator,
+            chunksize=chunk_size,
+            overlap=overlap
+        )
 
-            for page in self.pages:
+        final_docs = []
 
-                page_text = page.get("text", "")
-                if not page_text:
-                    continue
+        for page in self.all_pages:
 
-                cleaned_text = self.clean_data(page_text)
-                section = self.detect_section(page_text)
+            original_text = page["text"]
+            cleaned_text = self.clean_data(original_text)
+            detected_sections = self.detect_section(original_text)
 
-                splits = splitter.split_text(cleaned_text)
+            splits = splitter.split_text(cleaned_text)
 
-                for j, chunk in enumerate(splits):
+            for j, chunk in enumerate(splits):
 
-                    metadata = {
-                        "page": page["page_number"],
-                        "source": self.file_path,
-                        "section": section,
-                        "chunk_id": f"{self.file_path}_p{page['page_number']}_c{j}"
-                    }
+                metadata = {
+                    "page": page["page_number"],
+                    "source": page["source"],
+                    "file_name": os.path.basename(page["source"]),
+                    "section": detected_sections,
+                    "chunk_id": f"{page['source']}_p{page['page_number']}_c{j}"
+                }
 
-                    final_docs.append(
-                        Document(
-                            page_content=chunk,
-                            metadata=metadata
-                        )
+                final_docs.append(
+                    Document(
+                        page_content=chunk,
+                        metadata=metadata
                     )
+                )
 
-            print(f"Created {len(final_docs)} chunks with metadata.")
-            
-            return final_docs
-        except Exception as e:
-            return e
+        print(f"Created {len(final_docs)} chunks from multiple PDFs.")
+        return final_docs
 
     def create_text_vectors(self, separator=None, chunksize=1000, overlap=100):
 
-        try:
-            Vectors.initialize(config=self.config)
+        Vectors.initialize(config=self.config)
 
-            chunks = self.get_chunks(
-                chunk_size=chunksize,
-                overlap=overlap,
-                separator=separator
-            )
+        chunks = self.get_chunks(
+            chunk_size=chunksize,
+            overlap=overlap,
+            separator=separator
+        )
+        
+        for doc in chunks:print(doc.metadata)
+        vectors = Vectors.generate_vectors_from_documents(chunks=chunks)
 
-            print("Creating Vector Chunks")
+        if vectors:
+            print("Vector store successfully created for multiple PDFs.")
+        else:
+            print("Vector store creation failed.")
 
-            for doc in chunks:print(doc.metadata)
-
-            vectors = Vectors.generate_vectors_from_documents(chunks=chunks)
-
-            if vectors:
-                print("Vector store successfully created.")
-            else:
-                print("Vector store creation failed.")
-
-            return vectors
-
-        except Exception as e:
-            print(f"Error creating vectors: {e}")
-            return None
+        return vectors
 
 
 
@@ -148,136 +144,128 @@ class PrepareText:
 
 class PrepareExcel:
     """
-    Reads, cleans, chunks, and vectorizes Excel text data
-    (supports multiple sheets) for Gemini QA pipeline.
+    Reads, cleans, chunks, and vectorizes MULTIPLE Excel files.
     """
 
-    def __init__(self, file_path: str, config=None, api_key: str = None):
-        try:
-            self.file_path = file_path
-            self.config = config
-            self.api_key = api_key
+    def __init__(self, file_paths, config=None, api_key: str = None):
 
-            self.sheets = ReadExcel.read_excel_files(file=file_path)
+        if isinstance(file_paths, str):
+            file_paths = [file_paths]
 
-            print("======Generated Sheets========")
-            print(self.sheets)
+        self.file_paths = file_paths
+        self.config = config
+        self.api_key = api_key
 
-            # Convert all sheets into one structured string
-            self.raw_text = self.convert_excel_to_text()
+        self.raw_text = ""
+        self.process_all_excels()
 
-        except Exception as e:
-            print(f"Error initializing PrepareExcel: {e}")
-            self.sheets = {}
-            self.raw_text = ""
+    def process_all_excels(self):
 
+        all_text = []
 
-    def convert_excel_to_text(self):
-        """
-        Converts text columns of all sheets into structured text format
-        while clearly preserving sheet boundaries.
-        """
-        try:
-            if not self.sheets:
-                return ""
+        for file_path in self.file_paths:
 
-            all_text = []
+            try:
+                if file_path.endswith(".xls"):
+                    sheets = pd.read_excel(file_path, sheet_name=None, engine="xlrd")
+                else:
+                    sheets = pd.read_excel(file_path, sheet_name=None, engine="openpyxl")
 
-            for sheet_name, df in self.sheets.items():
+                for sheet_name, df in sheets.items():
 
-                # Clear sheet boundary marker
-                all_text.append(f"\n\n========== SHEET START: {sheet_name} ==========\n")
+                    all_text.append(f"\n\n===== FILE: {file_path} | SHEET: {sheet_name} =====\n")
 
-                text_columns = df.select_dtypes(include=["object"]).columns
+                    text_columns = df.select_dtypes(include=["object"]).columns
 
-                if len(text_columns) == 0:
-                    print(f"No textual columns found in sheet: {sheet_name}")
-                    continue
+                    for row_index, row in df.iterrows():
+                        row_parts = []
 
-                for row_index, row in df.iterrows():
+                        for col in text_columns:
+                            value = str(row[col]) if pd.notna(row[col]) else ""
+                            row_parts.append(f"{col}: {value}")
 
-                    row_parts = []
+                        if row_parts:
+                            formatted_row = f"[Row {row_index}] " + " | ".join(row_parts)
+                            all_text.append(formatted_row)
 
-                    for col in text_columns:
-                        value = str(row[col]) if pd.notna(row[col]) else ""
-                        row_parts.append(f"{col}: {value}")
+            except Exception as e:
+                print(f"Error processing Excel {file_path}: {e}")
 
-                    if row_parts:
-                        # Explicit row separation
-                        formatted_row = f"[Row {row_index}] " + " | ".join(row_parts)
-                        all_text.append(formatted_row)
-
-                # Clear sheet end marker
-                all_text.append(f"\n========== SHEET END: {sheet_name} ==========\n")
-
-            return "\n".join(all_text)
-
-        except Exception as e:
-            print(f"Error converting Excel to text: {e}")
-            return ""
-
+        self.raw_text = "\n".join(all_text)
+        print("All Excel files processed.")
 
     def clean_data(self):
-        """
-        Cleans text for embeddings.
-        """
-        try:
-            return cleantext.clean(
-                self.raw_text,
-                lowercase=True,
-                punct=True,
-                extra_spaces=True
-            )
-        except Exception as e:
-            print(f"Error cleaning Excel data: {e}")
-            return self.raw_text
-
+        return cleantext.clean(
+            self.raw_text,
+            lowercase=True,
+            punct=True,
+            extra_spaces=True
+        )
 
     def get_chunks(self, separator=None, chunksize=1000, overlap=100):
-        """
-        Splits cleaned Excel text into document chunks.
-        """
-        try:
-            splitter = TextChunks.initialize(
-                separator=separator,
-                chunksize=chunksize,
-                overlap=overlap
+
+        splitter = TextChunks.initialize(
+            separator=separator,
+            chunksize=chunksize,
+            overlap=overlap
+        )
+
+        splits = splitter.split_text(self.clean_data())
+
+        documents = [
+            Document(
+                page_content=chunk,
+                metadata={
+                    "source": "multiple_excel_files",
+                    "chunk_id": f"excel_chunk_{i}"
+                }
             )
+            for i, chunk in enumerate(splits)
+        ]
 
-            chunks = splitter.create_documents([self.clean_data()])
+        print(f"Created {len(documents)} chunks from multiple Excel files.")
+        return documents
 
+    def create_text_vectors(self, separator=None, chunksize=1000, overlap=100):
 
-            print(f"Created {len(chunks)} Excel text chunks.")
-            print(chunks)
-            return chunks
+        Vectors.initialize(config=self.config)
 
-        except Exception as e:
-            print(f"Error creating Excel chunks: {e}")
-            return []
+        vectors = Vectors.generate_vectors_from_documents(
+            chunks=self.get_chunks(separator, chunksize, overlap)
+        )
 
+        if vectors:
+            print("Vector store successfully created for multiple Excel files.")
+        else:
+            print("Vector store creation failed.")
 
-    def create_text_vectors(self, separator=None, chunksize=None, overlap=None):
-        """
-        Generates FAISS vector store for Excel semantic search.
-        """
-        try:
-            Vectors.initialize(config=self.config)
-
-            vectors = Vectors.generate_vectors_from_documents(
-                chunks=self.get_chunks(separator, chunksize, overlap)
-            )
-
-            if vectors:
-                print("Excel vector store successfully created.")
-            else:
-                print("Excel vector store creation failed.")
-
-            return vectors
-
-        except Exception as e:
-            print(f"Error creating Excel vectors: {e}")
-            return None
+        return vectors
 
 if __name__ == "__main__":
+    
+    from LLMUtils.LLMConfigs import ChatGoogleGENAI, GeminiConfig, QAState, api_key
+    config = GeminiConfig(
+        chat_model_name="gemini-3-flash-preview",
+        embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
+        temperature=0,
+        top_p=0.8,
+        top_k=32,
+        max_output_tokens=3000,
+        generation_max_tokens=8192,
+        api_key=api_key
+    )
 
-    pass
+    file_paths = [
+        "E:/Lang-Graph/Book.pdf",
+        "E:/Lang-Graph/TATAAGM.pdf",
+    ]
+
+    # Process PDFs
+    text_processor = PrepareText(file_paths=file_paths, config=config, api_key=api_key)
+    pdf_vectors = text_processor.create_text_vectors(
+        chunksize=1500,
+        overlap=250,
+        separator=["\n\n", "\n", " ", ""]
+    )
+
+    print(pdf_vectors)

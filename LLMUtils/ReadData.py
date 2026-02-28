@@ -3,6 +3,8 @@ import pandas as pd
 
 # ========================== FILE UTILITIES ============================
 
+
+# class to read PDF files
 class ReadFile:
     """
     Utility to read text from PDFs or plain text files.
@@ -69,6 +71,9 @@ class ReadFile:
             print(f"Error reading PDF file '{file_path}': {e}")
             return []
 
+
+
+# class for reading Excel files
 class ReadExcel:
     """
     Utility class for processing Excel files
